@@ -1,5 +1,5 @@
 # Java API For JMComic (禁漫天堂)
-Under development
+Under development, issues and pull requests are welcome.
 
 ## 功能概述
   - 获取本子、章节、图片
