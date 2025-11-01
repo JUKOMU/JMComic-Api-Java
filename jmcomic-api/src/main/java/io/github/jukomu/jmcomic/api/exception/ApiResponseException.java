@@ -16,6 +16,11 @@ public class ApiResponseException extends JmComicException {
         this.errorCode = -1; // -1 表示没有特定的错误码
     }
 
+    public ApiResponseException(String message, Throwable cause) {
+        super(message, cause);
+        this.errorCode = -1; // -1 表示没有特定的错误码
+    }
+
     public ApiResponseException(String message, int errorCode) {
         super(message);
         this.errorCode = errorCode;

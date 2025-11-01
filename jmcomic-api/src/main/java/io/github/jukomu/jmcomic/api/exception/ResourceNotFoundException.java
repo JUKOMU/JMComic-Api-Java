@@ -6,7 +6,7 @@ package io.github.jukomu.jmcomic.api.exception;
  * @Project: jmcomic-api-java
  * @Date: 2025/10/28
  */
-public abstract class ResourceNotFoundException extends JmComicException {
+public class ResourceNotFoundException extends JmComicException {
 
     private final String resourceId;
 
