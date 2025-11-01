@@ -29,6 +29,8 @@ public final class JmConfiguration {
     private final int retryTimes;
     private final ExecutorService downloadExecutor;
     private final int downloadThreadPoolSize;
+    // 单位: Byte
+    private final int cacheSize;
 
     private JmConfiguration(Builder builder) {
         this.clientType = builder.clientType;
@@ -40,6 +42,7 @@ public final class JmConfiguration {
         this.retryTimes = builder.retryTimes;
         this.downloadExecutor = builder.downloadExecutor;
         this.downloadThreadPoolSize = builder.downloadThreadPoolSize;
+        this.cacheSize = builder.cacheSize;
     }
 
     // Getters for all fields
@@ -79,6 +82,10 @@ public final class JmConfiguration {
         return downloadThreadPoolSize;
     }
 
+    public int getCacheSize() {
+        return cacheSize;
+    }
+
     /**
      * 用于创建 JmConfiguration 实例的 Builder
      */
@@ -92,6 +99,7 @@ public final class JmConfiguration {
         private int retryTimes = 5;
         private ExecutorService downloadExecutor = null;
         private int downloadThreadPoolSize = -1; // -1 表示使用默认值 (CPU核心数)
+        private int cacheSize = 100 * 1024 * 1024;
 
         public Builder clientType(ClientType type) {
             this.clientType = Objects.requireNonNull(type);
@@ -142,6 +150,12 @@ public final class JmConfiguration {
 
         public Builder downloadExecutor(ExecutorService executor) {
             this.downloadExecutor = executor;
+            return this;
+        }
+
+        public Builder cacheSize(int size) {
+            if (size < 0) throw new IllegalArgumentException("Cache size must be non-negative.");
+            this.cacheSize = size;
             return this;
         }
 

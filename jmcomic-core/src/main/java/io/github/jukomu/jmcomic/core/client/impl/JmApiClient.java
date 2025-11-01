@@ -10,7 +10,6 @@ import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
 import io.github.jukomu.jmcomic.core.crypto.JmCryptoTool;
-import io.github.jukomu.jmcomic.core.crypto.JmImageTool;
 import io.github.jukomu.jmcomic.core.net.model.JmApiResponse;
 import io.github.jukomu.jmcomic.core.net.model.JmHtmlResponse;
 import io.github.jukomu.jmcomic.core.net.model.JmResponse;
@@ -64,6 +63,10 @@ public final class JmApiClient extends AbstractJmClient {
 
     @Override
     public JmAlbum getAlbum(String albumId) {
+        JmAlbum cachedJmAlbum = getCachedJmAlbum(albumId);
+        if (cachedJmAlbum != null) {
+            return cachedJmAlbum;
+        }
         // API端点 /album?id=...
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment("album")
@@ -71,11 +74,17 @@ public final class JmApiClient extends AbstractJmClient {
                 .build();
 
         JmApiResponse jmApiResponse = executeGetRequest(url, JmConstants.APP_TOKEN_SECRET);
-        return ApiParser.parseAlbum(jmApiResponse.getDecodedData());
+        JmAlbum jmAlbum = ApiParser.parseAlbum(jmApiResponse.getDecodedData());
+        cacheJmAlbum(jmAlbum);
+        return jmAlbum;
     }
 
     @Override
     public JmPhoto getPhoto(String photoId) {
+        JmPhoto cachedJmPhoto = getCachedJmPhoto(photoId);
+        if (cachedJmPhoto != null) {
+            return cachedJmPhoto;
+        }
         // API端点 /chapter?id=...
         HttpUrl photoUrl = newHttpUrlBuilder()
                 .addPathSegment("chapter")
@@ -103,24 +112,9 @@ public final class JmApiClient extends AbstractJmClient {
         JmResponse response1 = executeRequest(request);
         JmHtmlResponse jmHtmlResponse = new JmHtmlResponse(response1);
         String scrambleId = ApiParser.parsePhotoScrambleId(jmHtmlResponse.getHtml());
-        return ApiParser.parsePhoto(photoJson, scrambleId);
-
-    }
-
-    @Override
-    public byte[] fetchImageBytes(JmImage image) {
-        Request request = new Request.Builder()
-                .url(image.getDownloadUrl())
-                .get()
-                .build();
-
-        JmResponse jmResponse = executeRequest(request);
-        // 如果是.gif，不进行解密
-        if (image.isGif()) {
-            return jmResponse.getContent();
-        }
-        // 对图片进行解密
-        return JmImageTool.decryptImage(jmResponse.getContent(), image);
+        JmPhoto jmPhoto = ApiParser.parsePhoto(photoJson, scrambleId);
+        cacheJmPhoto(jmPhoto);
+        return jmPhoto;
 
     }
 
@@ -142,6 +136,10 @@ public final class JmApiClient extends AbstractJmClient {
 
     @Override
     public JmFavoritePage getFavorites(int page) {
+        JmFavoritePage cachedJmFavoritePage = getCachedJmFavoritePage(page);
+        if (cachedJmFavoritePage != null) {
+            return cachedJmFavoritePage;
+        }
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment("favorite")
                 .addQueryParameter("page", String.valueOf(page))
@@ -149,7 +147,9 @@ public final class JmApiClient extends AbstractJmClient {
                 .build();
 
         JmApiResponse jmApiResponse = executeGetRequest(url, JmConstants.APP_TOKEN_SECRET);
-        return ApiParser.parseFavoritePage(jmApiResponse.getDecodedData(), page);
+        JmFavoritePage jmFavoritePage = ApiParser.parseFavoritePage(jmApiResponse.getDecodedData(), page);
+        cacheJmFavoritePage(jmFavoritePage);
+        return jmFavoritePage;
 
     }
 

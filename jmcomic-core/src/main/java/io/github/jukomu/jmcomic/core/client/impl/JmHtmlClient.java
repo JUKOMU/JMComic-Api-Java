@@ -11,7 +11,6 @@ import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
 import io.github.jukomu.jmcomic.core.net.model.JmHtmlResponse;
-import io.github.jukomu.jmcomic.core.net.model.JmResponse;
 import io.github.jukomu.jmcomic.core.net.provider.JmDomainManager;
 import io.github.jukomu.jmcomic.core.parser.HtmlParser;
 import okhttp3.*;
@@ -65,43 +64,38 @@ public final class JmHtmlClient extends AbstractJmClient {
 
     @Override
     public JmAlbum getAlbum(String albumId) {
+        JmAlbum cachedJmAlbum = getCachedJmAlbum(albumId);
+        if (cachedJmAlbum != null) {
+            return cachedJmAlbum;
+        }
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment("album")
                 .addPathSegment(albumId)
                 .build();
 
         JmHtmlResponse jmHtmlResponse = executeGetRequest(url);
-        return HtmlParser.parseAlbum(jmHtmlResponse.getHtml());
+        JmAlbum jmAlbum = HtmlParser.parseAlbum(jmHtmlResponse.getHtml());
+        cacheJmAlbum(jmAlbum);
+        return jmAlbum;
 
     }
 
     @Override
     public JmPhoto getPhoto(String photoId) {
+        JmPhoto cachedJmPhoto = getCachedJmPhoto(photoId);
+        if (cachedJmPhoto != null) {
+            return cachedJmPhoto;
+        }
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment("photo")
                 .addPathSegment(photoId)
                 .build();
 
         JmHtmlResponse jmHtmlResponse = executeGetRequest(url);
-        return HtmlParser.parsePhoto(jmHtmlResponse.getHtml());
+        JmPhoto jmPhoto = HtmlParser.parsePhoto(jmHtmlResponse.getHtml());
+        cacheJmPhoto(jmPhoto);
+        return jmPhoto;
 
-    }
-
-    @Override
-    public byte[] fetchImageBytes(JmImage image) {
-        Request request = new Request.Builder()
-                .url(image.getDownloadUrl())
-                .get()
-                .build();
-
-        try {
-            JmResponse response = executeRequest(request);
-            return response.getContent();
-        } catch (ApiResponseException e) {
-            throw new ApiResponseException("Failed to fetch image: " + e.getMessage());
-        } catch (NetworkException e) {
-            throw new NetworkException("Failed to fetch image due to I/O error", e);
-        }
     }
 
     @Override
@@ -160,6 +154,10 @@ public final class JmHtmlClient extends AbstractJmClient {
 
     @Override
     public JmFavoritePage getFavorites(int page) {
+        JmFavoritePage cachedJmFavoritePage = getCachedJmFavoritePage(page);
+        if (cachedJmFavoritePage != null) {
+            return cachedJmFavoritePage;
+        }
         String username = getLoggedInUserName();
 
         HttpUrl url = newHttpUrlBuilder()
@@ -172,7 +170,9 @@ public final class JmHtmlClient extends AbstractJmClient {
 
         try {
             JmHtmlResponse jmHtmlResponse = executeGetRequest(url);
-            return HtmlParser.parseFavoritePage(jmHtmlResponse.getHtml(), page);
+            JmFavoritePage jmFavoritePage = HtmlParser.parseFavoritePage(jmHtmlResponse.getHtml(), page);
+            cacheJmFavoritePage(jmFavoritePage);
+            return jmFavoritePage;
         } catch (ApiResponseException e) {
             throw new ApiResponseException("Failed to get favorites: " + e.getMessage());
         } catch (NetworkException e) {
