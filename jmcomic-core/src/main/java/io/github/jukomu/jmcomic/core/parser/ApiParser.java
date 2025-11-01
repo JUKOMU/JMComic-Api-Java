@@ -143,6 +143,15 @@ public final class ApiParser {
             String photoId = StringUtils.defaultIfBlank(jsonObject.getString("id"), "");
             String name = StringUtils.defaultIfBlank(jsonObject.getString("name"), "");
             String seriesId = StringUtils.defaultIfBlank(jsonObject.getString("series_id"), "");
+            JSONArray series = jsonObject.getJSONArray("series");
+            boolean isSingleAlbum = false;
+            if (series == null || series.isEmpty() || series.size() == 1) {
+                // 该章节就是一个本子
+                if (!photoId.equals(seriesId)) {
+                    seriesId = photoId;
+                    isSingleAlbum = true;
+                }
+            }
 
             // API 返回的 tags 是一个空格分隔的字符串
             String tagsString = jsonObject.getString("tags");
@@ -163,10 +172,11 @@ public final class ApiParser {
                     name,
                     seriesId,
                     scrambleId,
-                    parsePhotoSortOrder(jsonObject.getJSONArray("series"), photoId),
+                    parsePhotoSortOrder(series, photoId),
                     "", // API photo 响应中没有 author
                     tags,
-                    images
+                    images,
+                    isSingleAlbum
             );
         } catch (JSONException e) {
             throw new ParseResponseException("Failed to parse photo API JSON", e);

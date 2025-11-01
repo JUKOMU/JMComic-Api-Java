@@ -33,7 +33,7 @@ public final class HtmlParser {
     private static final Pattern PATTERN_SCRIPT_VAR = Pattern.compile("var\\s+%s\\s*=\\s*['\"]?(.+?)['\"]?;");
     private static final Pattern PATTERN_HTML_JM_PUB_DOMAIN = Pattern.compile("[\\w-]+\\.\\w+/?\\w+");
     private static final Pattern PATTERN_JM_DOMAIN = Pattern.compile("^(?:https?://)?(?:[^@\\n]+@)?(?:www\\.)?([^:/\\n?]+)");
-    public static final Pattern PATTERN_HTML_ALBUM_VIEWS = Pattern.compile("<span>(.*?)</span>\\n *<span>(次觀看|观看次数|次观看次数)</span>");
+    public static final Pattern PATTERN_HTML_ALBUM_VIEWS = Pattern.compile("<span>(.*?)</span>\\n *<span>(次觀看|观看次数|次观看次数|次觀看次數|觀看次數|views)</span>");
     public static final Pattern PATTERN_HTML_SEARCH_TOTAL = Pattern.compile("class=\"text-white\">(\\d+)</span> A漫.");
 
     /**
@@ -51,7 +51,7 @@ public final class HtmlParser {
         return new JmAlbum(
                 id,
                 ParseHelper.selectFirstText(doc, "h1#book-name", "album title"),
-                ParseHelper.selectFirstText(doc, "h2:contains(叙述：)", "album description").replace("叙述：", "").trim(),
+                ParseHelper.selectFirstText(doc, "h2:contains(叙述：), h2:contains(敘述：)", "album description").replace("叙述：", "").trim(),
                 extractVarFromScript(doc, "scramble_id"),
                 // 日期
                 extractDate(doc, "上架日期"),
@@ -92,22 +92,17 @@ public final class HtmlParser {
 
     private static String parseAlbumId(Document doc) {
         // 优先从PC布局的 h2 标签提取
-        Element h2Element = doc.selectFirst("div.col-lg-7 h2:contains(禁漫车：)"); // 变量名改为 h2Element 更清晰
+        Element h2Element = doc.selectFirst("div.col-lg-7 h2:contains(禁漫车：), div.col-lg-7 h2:contains(禁漫車：)");
         if (h2Element != null && h2Element.parent() != null) {
-            // 1. 获取 h2 的父元素 <div>
             Element parentDiv = h2Element.parent();
-
-            // 2. 对父元素 <div> 调用 .text()
-            String fullText = parentDiv.text(); // 得到 "禁漫车： JM487494"
-
-            // 3. 从完整文本中提取数字
+            String fullText = parentDiv.text();
             String id = fullText.replaceAll("[^0-9]", "");
             if (!id.isEmpty()) {
                 return id;
             }
         }
         // 备用，从移动端布局的 span.number 提取
-        Element mobileIdElement = doc.selectFirst("span.number:contains(禁漫车：)");
+        Element mobileIdElement = doc.selectFirst("span.number:contains(禁漫车：), pan.number:contains(禁漫車：)");
         if (mobileIdElement != null) {
             return mobileIdElement.text().replaceAll("[^0-9]", "");
         }
@@ -145,9 +140,13 @@ public final class HtmlParser {
         }
 
         // 备用PC端，从文本中提取
-        Element pcTextContainer = doc.selectFirst("div.col-lg-7 div.p-t-5.p-b-5:contains(页数：)");
+        Element pcTextContainer = doc.selectFirst("div.col-lg-7 div.p-t-5.p-b-5:contains(页数：), div.col-lg-7 div.p-t-5.p-b-5:contains(頁數：)");
         if (pcTextContainer != null) {
             Matcher matcher = Pattern.compile("页数：(\\d+)").matcher(pcTextContainer.text());
+            if (matcher.find()) {
+                return Integer.parseInt(matcher.group(1));
+            }
+            matcher = Pattern.compile("頁數：(\\d+)").matcher(pcTextContainer.text());
             if (matcher.find()) {
                 return Integer.parseInt(matcher.group(1));
             }
@@ -158,7 +157,10 @@ public final class HtmlParser {
 
     private static String extractViewsCount(Document doc) {
         // 优先PC端结构
-        Element pcContainer = doc.selectFirst("div.col-lg-7 span:has(span:matches(次觀看|观看次数|次观看|views))");
+        if (PATTERN_HTML_ALBUM_VIEWS.matcher(doc.text()).find()) {
+            return PATTERN_HTML_ALBUM_VIEWS.matcher(doc.text()).group(0);
+        }
+        Element pcContainer = doc.selectFirst("div.col-lg-7 span:has(span:matches(次觀看|观看次数|次观看次数|次觀看次數|觀看次數|views))");
         if (pcContainer != null) {
             // 在这个容器内，第一个 span 就是我们想要的数字
             Element valueElement = pcContainer.selectFirst("span");
@@ -198,7 +200,7 @@ public final class HtmlParser {
                     Element authorElement = item.selectFirst("div.title-truncate > a");
 
                     if (link == null || titleElement == null) {
-                        return null; // or log a warning
+                        return null;
                     }
 
                     String id = extractIdFromUrl(link.attr("href"));
@@ -228,7 +230,7 @@ public final class HtmlParser {
         for (Element item : items) {
             String title = item.text().replaceAll("第[\\d\\s]+[话話]", "").trim();
             if (title.isEmpty()) {
-                // 兼容只有序号没有标题的情况，例如 "第 81 話"
+                // 兼容只有序号没有标题的情况
                 title = item.text().trim();
             }
             metas.add(new JmPhotoMeta(
@@ -279,6 +281,11 @@ public final class HtmlParser {
         String seriesId = extractVarFromScript(doc, "series_id");
         int sortOrder = ParseHelper.parseIntOrDefault(extractVarFromScript(doc, "sort"), 1);
         String pageArrJson = extractVarFromScript(doc, "page_arr");
+        boolean isSingleAlbum = false;
+        if ("0".equals(seriesId)) {
+            seriesId = photoId;
+            isSingleAlbum = true;
+        }
 
         // 从 <meta> 和 <title> 标签中提取信息
         String title = parsePhotoTitle(doc);
@@ -300,7 +307,8 @@ public final class HtmlParser {
                 sortOrder,
                 "",
                 tags,
-                images
+                images,
+                isSingleAlbum
         );
     }
 
@@ -377,7 +385,7 @@ public final class HtmlParser {
         // 计算总页数
         int totalPages = (totalItems == 0) ? 0 : (int) Math.ceil((double) totalItems / JmConstants.PAGE_SIZE_SEARCH);
 
-        // 选择所有本子卡片 (逻辑保持不变)
+        // 选择所有本子卡片
         Elements albumCards = doc.select("div.row > div.col-lg-3.col-md-4.col-sm-6.thumb-overlay-albums");
 
         List<JmAlbumMeta> content = albumCards.stream()
@@ -391,12 +399,8 @@ public final class HtmlParser {
         Element link = card.selectFirst("a");
         String id = extractIdFromUrl(link.attr("href"));
         String title = link.attr("title");
-
-        // 作者信息通常在卡片的 "title-truncate" 类中
         Element authorElement = card.selectFirst("div.title-truncate");
         List<String> authors = (authorElement != null) ? List.of(authorElement.text()) : List.of();
-
-        // 标签信息通常在卡片的 "tags" 类中
         List<String> tags = ParseHelper.selectAllText(card, "div.tags a");
 
         return new JmAlbumMeta(id, title, authors, tags);
