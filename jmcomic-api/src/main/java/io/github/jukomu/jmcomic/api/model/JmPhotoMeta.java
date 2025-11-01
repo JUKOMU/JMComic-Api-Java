@@ -20,4 +20,31 @@ public record JmPhotoMeta(
          */
         int sortOrder
 ) {
+
+    /**
+     * 获取章节ID
+     *
+     * @return 章节ID
+     */
+    public String getId() {
+        return id;
+    }
+
+    /**
+     * 获取章节标题
+     *
+     * @return 章节标题
+     */
+    public String getTitle() {
+        return title;
+    }
+
+    /**
+     * 获取章节在本子中的顺序
+     *
+     * @return 顺序
+     */
+    public int getSortOrder() {
+        return sortOrder;
+    }
 }

@@ -34,6 +34,61 @@ public record JmImage(
          */
         int sortOrder
 ) {
+
+    /**
+     * 获取该图片所属的章节(Photo)的ID
+     *
+     * @return 章节ID
+     */
+    public String getPhotoId() {
+        return photoId;
+    }
+
+    /**
+     * 获取用于图片解密的 scramble ID
+     *
+     * @return scramble ID
+     */
+    public String getScrambleId() {
+        return scrambleId;
+    }
+
+    /**
+     * 获取图片的完整文件名
+     *
+     * @return 文件名
+     */
+    public String getFilename() {
+        return filename;
+    }
+
+    /**
+     * 获取图片的CDN URL
+     *
+     * @return 图片的URL
+     */
+    public String getUrl() {
+        return url;
+    }
+
+    /**
+     * 获取图片URL的查询参数
+     *
+     * @return 查询参数
+     */
+    public String getQueryParams() {
+        return queryParams;
+    }
+
+    /**
+     * 获取图片在本章节中的顺序
+     *
+     * @return 顺序
+     */
+    public int getSortOrder() {
+        return sortOrder;
+    }
+
     /**
      * 获取不带后缀的文件名
      *

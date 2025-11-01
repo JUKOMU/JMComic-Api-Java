@@ -26,4 +26,40 @@ public record JmAlbumMeta(
          */
         List<String> tags
 ) {
+
+    /**
+     * 获取本子ID
+     *
+     * @return 本子ID
+     */
+    public String getId() {
+        return id;
+    }
+
+    /**
+     * 获取本子标题
+     *
+     * @return 本子标题
+     */
+    public String getTitle() {
+        return title;
+    }
+
+    /**
+     * 获取作者列表
+     *
+     * @return 作者列表
+     */
+    public List<String> getAuthors() {
+        return authors;
+    }
+
+    /**
+     * 获取标签列表
+     *
+     * @return 标签列表
+     */
+    public List<String> getTags() {
+        return tags;
+    }
 }

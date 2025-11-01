@@ -97,11 +97,10 @@ public class JmApiClientTest {
         );
     }
 
-//    @Test
+    @Test
     public void testDownloadAlbum() {
         JmAlbum album = jmClient.getAlbum(albumId5);
-        AlbumPathGenerator albumPathGenerator = album1 -> Path.of(FileUtils.sanitizeFilename(album.getPrimaryAuthor()), album.title(), album.id());
-        jmClient.downloadAlbum(album, albumPathGenerator);
+        System.out.println(album);
     }
 
 //    @Test

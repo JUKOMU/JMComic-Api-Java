@@ -34,27 +34,56 @@ public final class SearchQuery {
         this.page = builder.page;
     }
 
-    // Getters for all fields
+    /**
+     * 获取搜索关键词
+     *
+     * @return 搜索文本
+     */
     public String getSearchQuery() {
         return searchQuery;
     }
 
+    /**
+     * 获取排序方式
+     *
+     * @return 排序枚举
+     */
     public OrderBy getOrderBy() {
         return orderBy;
     }
 
+    /**
+     * 获取时间范围
+     *
+     * @return 时间范围枚举
+     */
     public TimeOption getTimeOption() {
         return timeOption;
     }
 
+    /**
+     * 获取主分类
+     *
+     * @return 主分类枚举
+     */
     public Category getCategory() {
         return category;
     }
 
+    /**
+     * 获取网页端特有的子分类
+     *
+     * @return 子分类的 Optional 包装
+     */
     public Optional<String> getSubCategory() {
         return Optional.ofNullable(subCategory);
     }
 
+    /**
+     * 获取要获取的页码
+     *
+     * @return 页码
+     */
     public int getPage() {
         return page;
     }
