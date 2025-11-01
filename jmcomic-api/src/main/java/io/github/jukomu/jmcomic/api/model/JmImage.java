@@ -59,6 +59,16 @@ public record JmImage(
      * @return 文件名
      */
     public String getFilename() {
+        if (filename != null && !filename.isEmpty()) {
+            return filename;
+        }
+        if (url != null && !url.isEmpty()) {
+            // 尝试从URL获取文件名
+            int lastSlash = url.lastIndexOf('/');
+            if (lastSlash != -1 && lastSlash < url.length() - 1) {
+                return url.substring(lastSlash + 1);
+            }
+        }
         return filename;
     }
 
@@ -95,8 +105,20 @@ public record JmImage(
      * @return 例如 "00001"
      */
     public String getFilenameWithoutSuffix() {
+        String filename = getFilename();
         int dotIndex = filename.lastIndexOf('.');
         return (dotIndex == -1) ? filename : filename.substring(0, dotIndex);
+    }
+
+    /**
+     * 获取文件名的后缀
+     *
+     * @return 例如 ".webp"
+     */
+    public String getSuffix() {
+        String filename = getFilename();
+        int dotIndex = filename.lastIndexOf('.');
+        return (dotIndex == -1) ? filename : filename.substring(dotIndex);
     }
 
     /**

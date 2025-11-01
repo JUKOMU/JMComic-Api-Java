@@ -234,7 +234,7 @@ public record JmAlbum(
      * @return 如果只有一个章节则为单行本
      */
     public boolean isSingleAlbum() {
-        return photoMetas.size() == 1;
+        return photoMetas.size() <= 1;
     }
 
     /**

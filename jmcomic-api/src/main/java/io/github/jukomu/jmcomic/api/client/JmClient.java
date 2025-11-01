@@ -1,8 +1,9 @@
 package io.github.jukomu.jmcomic.api.client;
 
 import io.github.jukomu.jmcomic.api.model.*;
-import io.github.jukomu.jmcomic.api.strategy.AlbumPathGenerator;
-import io.github.jukomu.jmcomic.api.strategy.PhotoPathGenerator;
+import io.github.jukomu.jmcomic.api.strategy.IAlbumPathGenerator;
+import io.github.jukomu.jmcomic.api.strategy.IImagePathGenerator;
+import io.github.jukomu.jmcomic.api.strategy.IPhotoPathGenerator;
 import okhttp3.Cookie;
 
 import java.io.IOException;
@@ -118,12 +119,42 @@ public interface JmClient extends AutoCloseable {
     // == 便利操作层 ==
 
     /**
+     * 下载图片到默认路径
+     *
+     * @param image 图片信息
+     */
+    void downloadImage(JmImage image) throws IOException;
+
+    /**
+     * 下载图片
+     *
+     * @param imageUrl 图片URL
+     */
+    void downloadImage(String imageUrl, Path path) throws IOException;
+
+    /**
      * 下载图片到指定路径
      *
-     * @param image           图片信息
-     * @param destinationPath 路径
+     * @param image              图片信息
+     * @param imagePathGenerator 路径
      */
-    void downloadImage(JmImage image, Path destinationPath) throws IOException;
+    void downloadImage(JmImage image, IImagePathGenerator imagePathGenerator) throws IOException;
+
+    /**
+     * 下载图片到指定路径
+     *
+     * @param image 图片信息
+     * @param path  路径
+     */
+    void downloadImage(JmImage image, Path path) throws IOException;
+
+    /**
+     * 下载章节到默认路径
+     *
+     * @param photo 章节详情对象
+     * @return 下载结果报告
+     */
+    DownloadResult downloadPhoto(JmPhoto photo);
 
     /**
      * 下载章节到指定路径
@@ -132,7 +163,16 @@ public interface JmClient extends AutoCloseable {
      * @param pathGenerator 路径
      * @return 下载结果报告
      */
-    DownloadResult downloadPhoto(JmPhoto photo, PhotoPathGenerator pathGenerator);
+    DownloadResult downloadPhoto(JmPhoto photo, IPhotoPathGenerator pathGenerator);
+
+    /**
+     * 下载章节到指定路径
+     *
+     * @param photo 章节详情对象
+     * @param path  路径
+     * @return 下载结果报告
+     */
+    DownloadResult downloadPhoto(JmPhoto photo, Path path);
 
     /**
      * 下载章节到指定路径
@@ -142,7 +182,25 @@ public interface JmClient extends AutoCloseable {
      * @param executor      线程池
      * @return 下载结果报告
      */
-    DownloadResult downloadPhoto(JmPhoto photo, PhotoPathGenerator pathGenerator, ExecutorService executor);
+    DownloadResult downloadPhoto(JmPhoto photo, IPhotoPathGenerator pathGenerator, ExecutorService executor);
+
+    /**
+     * 下载章节到指定路径
+     *
+     * @param photo    章节详情对象
+     * @param path     路径
+     * @param executor 线程池
+     * @return 下载结果报告
+     */
+    DownloadResult downloadPhoto(JmPhoto photo, Path path, ExecutorService executor);
+
+    /**
+     * 下载本子到指定路径
+     *
+     * @param album 本子详情对象
+     * @return 下载结果报告
+     */
+    DownloadResult downloadAlbum(JmAlbum album);
 
     /**
      * 下载本子到指定路径
@@ -151,7 +209,16 @@ public interface JmClient extends AutoCloseable {
      * @param pathGenerator 路径
      * @return 下载结果报告
      */
-    DownloadResult downloadAlbum(JmAlbum album, AlbumPathGenerator pathGenerator);
+    DownloadResult downloadAlbum(JmAlbum album, IAlbumPathGenerator pathGenerator);
+
+    /**
+     * 下载本子到指定路径
+     *
+     * @param album 本子详情对象
+     * @param path  路径
+     * @return 下载结果报告
+     */
+    DownloadResult downloadAlbum(JmAlbum album, Path path);
 
     /**
      * 下载本子到指定路径
@@ -161,7 +228,17 @@ public interface JmClient extends AutoCloseable {
      * @param executor      线程池
      * @return 下载结果报告
      */
-    DownloadResult downloadAlbum(JmAlbum album, AlbumPathGenerator pathGenerator, ExecutorService executor);
+    DownloadResult downloadAlbum(JmAlbum album, IAlbumPathGenerator pathGenerator, ExecutorService executor);
+
+    /**
+     * 下载本子到指定路径
+     *
+     * @param album    本子详情对象
+     * @param path     路径
+     * @param executor 线程池
+     * @return 下载结果报告
+     */
+    DownloadResult downloadAlbum(JmAlbum album, Path path, ExecutorService executor);
 
     // == 资源管理 ==
 

@@ -11,7 +11,7 @@ import java.nio.file.Path;
  * @Date: 2025/10/28
  */
 @FunctionalInterface
-public interface ImagePathGenerator {
+public interface IImagePathGenerator {
     /**
      * 根据给定的图片信息，生成一个绝对路径
      *

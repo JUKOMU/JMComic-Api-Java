@@ -40,7 +40,11 @@ public record JmPhoto(
         /*
           此章节包含的所有图片的列表
          */
-        List<JmImage> images
+        List<JmImage> images,
+        /*
+          是否单行本
+         */
+        boolean isSingleAlbum
 ) {
 
     /**
@@ -121,7 +125,7 @@ public record JmPhoto(
      * @return 如果是单章本子则为true
      */
     public boolean isSingleAlbum() {
-        return id.equals(albumId);
+        return isSingleAlbum;
     }
 
     /**

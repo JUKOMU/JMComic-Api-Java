@@ -6,15 +6,19 @@ import io.github.jukomu.jmcomic.api.config.JmConfiguration;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
 import io.github.jukomu.jmcomic.api.exception.ApiResponseException;
 import io.github.jukomu.jmcomic.api.exception.NetworkException;
-import io.github.jukomu.jmcomic.api.model.JmAlbum;
-import io.github.jukomu.jmcomic.api.model.JmImage;
-import io.github.jukomu.jmcomic.api.model.JmPhoto;
-import io.github.jukomu.jmcomic.api.model.JmPhotoMeta;
-import io.github.jukomu.jmcomic.api.strategy.AlbumPathGenerator;
-import io.github.jukomu.jmcomic.api.strategy.PhotoPathGenerator;
+import io.github.jukomu.jmcomic.api.model.*;
+import io.github.jukomu.jmcomic.api.strategy.IAlbumPathGenerator;
+import io.github.jukomu.jmcomic.api.strategy.IImagePathGenerator;
+import io.github.jukomu.jmcomic.api.strategy.IPhotoPathGenerator;
+import io.github.jukomu.jmcomic.core.cache.CacheKey;
+import io.github.jukomu.jmcomic.core.cache.CachePool;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
+import io.github.jukomu.jmcomic.core.crypto.JmImageTool;
 import io.github.jukomu.jmcomic.core.net.model.JmResponse;
 import io.github.jukomu.jmcomic.core.net.provider.JmDomainManager;
+import io.github.jukomu.jmcomic.core.strategy.impl.DefaultAlbumPathGenerator;
+import io.github.jukomu.jmcomic.core.strategy.impl.DefaultImagePathGenerator;
+import io.github.jukomu.jmcomic.core.strategy.impl.DefaultPhotoPathGenerator;
 import okhttp3.*;
 import org.apache.commons.lang3.StringUtils;
 
@@ -44,6 +48,7 @@ public abstract class AbstractJmClient implements JmClient {
     private volatile String loggedInUserName;
     private final CookieManager cookieManager;
     protected final JmDomainManager domainManager;
+    protected final CachePool<CacheKey, Object> cachePool;
 
     protected AbstractJmClient(JmConfiguration config, OkHttpClient httpClient, CookieManager cookieManager, JmDomainManager domainManager) {
         this.config = Objects.requireNonNull(config);
@@ -62,6 +67,8 @@ public abstract class AbstractJmClient implements JmClient {
             this.internalExecutor = Executors.newFixedThreadPool(poolSize);
             this.isExternalExecutor = false;
         }
+        // 根据配置决定 CachePool
+        this.cachePool = new CachePool<>(config.getCacheSize());
         this.initialize();
     }
 
@@ -71,6 +78,28 @@ public abstract class AbstractJmClient implements JmClient {
     protected abstract void initialize();
 
     protected abstract void updateDomains();
+
+    @Override
+    public byte[] fetchImageBytes(JmImage image) {
+        Request request = new Request.Builder()
+                .url(image.getDownloadUrl())
+                .get()
+                .build();
+
+        try {
+            JmResponse jmResponse = executeRequest(request);
+            // 如果是.gif，不进行解密
+            if (image.isGif()) {
+                return jmResponse.getContent();
+            }
+            // 对图片进行解密
+            return JmImageTool.decryptImage(jmResponse.getContent(), image);
+        } catch (ApiResponseException e) {
+            throw new ApiResponseException("Failed to fetch image: " + e.getMessage());
+        } catch (NetworkException e) {
+            throw new NetworkException("Failed to fetch image due to I/O error", e);
+        }
+    }
 
     /**
      * 获取客户端的类型
@@ -114,22 +143,66 @@ public abstract class AbstractJmClient implements JmClient {
     // == 便利操作层实现 ==
 
     @Override
-    public void downloadImage(JmImage image, Path destinationPath) throws IOException {
-        byte[] imageBytes = fetchImageBytes(image);
-        // Ensure parent directory exists
-        if (destinationPath.getParent() != null) {
-            Files.createDirectories(destinationPath.getParent());
+    public void downloadImage(JmImage image) throws IOException {
+        downloadImage(image, new DefaultImagePathGenerator().generatePath(image));
+    }
+
+
+    @Override
+    public void downloadImage(String imageUrl, Path path) throws IOException {
+        JmImage jmImage = new JmImage("", "", "", imageUrl, "", 0);
+        downloadImage(jmImage, path);
+    }
+
+    @Override
+    public void downloadImage(JmImage image, IImagePathGenerator imagePathGenerator) throws IOException {
+        downloadImage(image, imagePathGenerator.generatePath(image));
+    }
+
+    @Override
+    public void downloadImage(JmImage image, Path path) throws IOException {
+        if (Files.isDirectory(path)) {
+            // 路径为目录则拼接文件名
+            path = path.resolve(image.getFilename());
         }
-        Files.write(destinationPath, imageBytes);
+        byte[] imageBytes = fetchImageBytes(image);
+        // 确保路径存在
+        if (path.getParent() != null) {
+            Files.createDirectories(path.getParent());
+        }
+        Files.write(path, imageBytes);
     }
 
     @Override
-    public DownloadResult downloadPhoto(JmPhoto photo, PhotoPathGenerator pathGenerator) {
-        return downloadPhoto(photo, pathGenerator, this.internalExecutor);
+    public DownloadResult downloadPhoto(JmPhoto photo) {
+        return downloadPhoto(photo, new DefaultPhotoPathGenerator());
     }
 
     @Override
-    public DownloadResult downloadPhoto(JmPhoto photo, PhotoPathGenerator pathGenerator, ExecutorService executor) {
+    public DownloadResult downloadPhoto(JmPhoto photo, IPhotoPathGenerator pathGenerator) {
+        JmAlbum album = getAlbum(photo.getAlbumId());
+        // 拼接完整路径
+        Path pathAlbum = new DefaultAlbumPathGenerator().generatePath(album);
+        Path pathPhoto = pathGenerator.generatePath(photo);
+        return downloadPhoto(photo, pathAlbum.resolve(pathPhoto));
+    }
+
+    @Override
+    public DownloadResult downloadPhoto(JmPhoto photo, Path path) {
+        return downloadPhoto(photo, path, this.internalExecutor);
+    }
+
+    @Override
+    public DownloadResult downloadPhoto(JmPhoto photo, IPhotoPathGenerator pathGenerator, ExecutorService executor) {
+        JmAlbum album = getAlbum(photo.getAlbumId());
+        // 拼接完整路径
+        Path pathAlbum = new DefaultAlbumPathGenerator().generatePath(album);
+        Path pathPhoto = pathGenerator.generatePath(photo);
+        return downloadPhoto(photo, pathAlbum.resolve(pathPhoto), executor);
+    }
+
+    @Override
+    public DownloadResult downloadPhoto(JmPhoto photo, Path path, ExecutorService executor) {
         List<CompletableFuture<Path>> futures = new ArrayList<>();
         List<Path> successfulFiles = Collections.synchronizedList(new ArrayList<>());
         ConcurrentHashMap<JmImage, Exception> failedTasks = new ConcurrentHashMap<>();
@@ -137,27 +210,22 @@ public abstract class AbstractJmClient implements JmClient {
         for (JmImage image : photo.images()) {
             CompletableFuture<Path> future = CompletableFuture.supplyAsync(() -> {
                 try {
-                    // The pathGenerator now provides the directory for the photo.
-                    Path photoDir = pathGenerator.generatePath(photo);
-                    Objects.requireNonNull(photoDir, "Photo path generator returned null for photo " + photo.id());
+                    Objects.requireNonNull(path, "Photo path generator returned null for photo " + photo.id());
 
-                    // Resolve the final image file path within the photo directory.
-                    Path destination = photoDir.resolve(image.filename());
+                    Path destination = path.resolve(image.filename());
 
                     downloadImage(image, destination);
                     return destination;
                 } catch (Exception e) {
                     failedTasks.put(image, e);
-                    throw new CompletionException(e); // Wrap exception for later processing
+                    throw new CompletionException(e);
                 }
             }, executor);
             futures.add(future);
         }
 
-        // Wait for all tasks to complete
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
-        // Collect successful results
         for (CompletableFuture<Path> future : futures) {
             if (!future.isCompletedExceptionally()) {
                 successfulFiles.add(future.join());
@@ -168,44 +236,40 @@ public abstract class AbstractJmClient implements JmClient {
     }
 
     @Override
-    public DownloadResult downloadAlbum(JmAlbum album, AlbumPathGenerator pathGenerator) {
+    public DownloadResult downloadAlbum(JmAlbum album) {
+        return downloadAlbum(album, new DefaultAlbumPathGenerator());
+    }
+
+    @Override
+    public DownloadResult downloadAlbum(JmAlbum album, IAlbumPathGenerator pathGenerator) {
         return downloadAlbum(album, pathGenerator, this.internalExecutor);
     }
 
     @Override
-    public DownloadResult downloadAlbum(JmAlbum album, AlbumPathGenerator pathGenerator, ExecutorService executor) {
+    public DownloadResult downloadAlbum(JmAlbum album, Path path) {
+        return downloadAlbum(album, path, this.internalExecutor);
+    }
+
+    @Override
+    public DownloadResult downloadAlbum(JmAlbum album, IAlbumPathGenerator pathGenerator, ExecutorService executor) {
+        return downloadAlbum(album, pathGenerator.generatePath(album), executor);
+    }
+
+    @Override
+    public DownloadResult downloadAlbum(JmAlbum album, Path path, ExecutorService executor) {
+        // 有具体路径时直接下载章节直接无需拼接album路径
         List<CompletableFuture<DownloadResult>> photoFutures = new ArrayList<>();
+        Objects.requireNonNull(path, "Album path generator returned null for album: " + album.id());
 
-        // 1. Use the AlbumPathGenerator to get the root directory for this album.
-        final Path albumPath = pathGenerator.generatePath(album);
-        Objects.requireNonNull(albumPath, "Album path generator returned null for album: " + album.id());
-
-        // Create a download task for each chapter (photo)
         for (JmPhotoMeta photoMeta : album.photoMetas()) {
             CompletableFuture<DownloadResult> future = CompletableFuture.supplyAsync(() -> {
-                // Get the full Photo details within the async task
                 JmPhoto fullPhoto = getPhoto(photoMeta.id());
-
-                // 2. This generator creates a directory for the photo inside the album directory.
-                PhotoPathGenerator photoDirGenerator = photo -> {
-                    String photoDirName = photo.id();
-                    if (StringUtils.isBlank(photoDirName)) {
-                        // Fallback using sort order if photo ID is not available
-                        photoDirName = "chapter-" + photo.sortOrder();
-                    }
-                    return albumPath.resolve(photoDirName);
-                };
-
-                // 3. Download this Photo, which will download all its images.
-                return downloadPhoto(fullPhoto, photoDirGenerator, executor);
+                return downloadPhoto(fullPhoto, new DefaultPhotoPathGenerator(), executor);
             }, executor);
             photoFutures.add(future);
         }
 
-        // Wait for all chapter download tasks to complete
         CompletableFuture.allOf(photoFutures.toArray(new CompletableFuture[0])).join();
-
-        // Merge the download results from all chapters
         List<Path> allSuccessfulFiles = Collections.synchronizedList(new ArrayList<>());
         ConcurrentHashMap<JmImage, Exception> allFailedTasks = new ConcurrentHashMap<>();
 
@@ -219,7 +283,6 @@ public abstract class AbstractJmClient implements JmClient {
 
         return new DownloadResult(allSuccessfulFiles, allFailedTasks);
     }
-
 
     // == 辅助方法==
 
@@ -280,6 +343,64 @@ public abstract class AbstractJmClient implements JmClient {
 
     protected Request.Builder getPostRequestBuilder(HttpUrl url, RequestBody requestBody) {
         return new Request.Builder().url(url).post(requestBody);
+    }
+
+    // == 缓存辅助方法 ==
+
+    /**
+     * 获取本子缓存
+     *
+     * @param albumId 本子id
+     * @return 本子详情
+     */
+    protected JmAlbum getCachedJmAlbum(String albumId) {
+        return (JmAlbum) cachePool.get(CacheKey.of(JmAlbum.class, albumId));
+    }
+
+    /**
+     * 获取章节缓存
+     *
+     * @param photoId 章节id
+     * @return 章节详情
+     */
+    protected JmPhoto getCachedJmPhoto(String photoId) {
+        return (JmPhoto) cachePool.get(CacheKey.of(JmPhoto.class, photoId));
+    }
+
+    /**
+     * 获取收藏夹缓存
+     *
+     * @return 收藏夹详情
+     */
+    protected JmFavoritePage getCachedJmFavoritePage(int page) {
+        return (JmFavoritePage) cachePool.get(CacheKey.of(JmFavoritePage.class, String.valueOf(page)));
+    }
+
+    /**
+     * 缓存本子详情
+     *
+     * @param album 本子详情
+     */
+    protected void cacheJmAlbum(JmAlbum album) {
+        cachePool.put(CacheKey.of(JmAlbum.class, album.id()), album);
+    }
+
+    /**
+     * 缓存章节详情
+     *
+     * @param photo 章节详情
+     */
+    protected void cacheJmPhoto(JmPhoto photo) {
+        cachePool.put(CacheKey.of(JmPhoto.class, photo.id()), photo);
+    }
+
+    /**
+     * 缓存用户收藏夹详情
+     *
+     * @param favoritePage 收藏夹详情
+     */
+    protected void cacheJmFavoritePage(JmFavoritePage favoritePage) {
+        cachePool.put(CacheKey.of(JmFavoritePage.class, String.valueOf(favoritePage.getCurrentPage())), favoritePage);
     }
 
     // == 资源管理实现 ==
