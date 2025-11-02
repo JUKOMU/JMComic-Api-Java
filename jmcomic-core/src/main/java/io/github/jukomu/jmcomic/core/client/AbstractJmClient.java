@@ -49,6 +49,7 @@ public abstract class AbstractJmClient implements JmClient {
     private final CookieManager cookieManager;
     protected final JmDomainManager domainManager;
     protected final CachePool<CacheKey, Object> cachePool;
+    protected final int concurrentPhotoDownloads;
 
     protected AbstractJmClient(JmConfiguration config, OkHttpClient httpClient, CookieManager cookieManager, JmDomainManager domainManager) {
         this.config = Objects.requireNonNull(config);
@@ -69,6 +70,8 @@ public abstract class AbstractJmClient implements JmClient {
         }
         // 根据配置决定 CachePool
         this.cachePool = new CachePool<>(config.getCacheSize());
+        // 同时下载的章节数
+        this.concurrentPhotoDownloads = config.getConcurrentPhotoDownloads();
         this.initialize();
     }
 
@@ -257,16 +260,27 @@ public abstract class AbstractJmClient implements JmClient {
 
     @Override
     public DownloadResult downloadAlbum(JmAlbum album, Path path, ExecutorService executor) {
+        Semaphore semaphore = new Semaphore(concurrentPhotoDownloads);
         // 有具体路径时直接下载章节直接无需拼接album路径
         List<CompletableFuture<DownloadResult>> photoFutures = new ArrayList<>();
         Objects.requireNonNull(path, "Album path generator returned null for album: " + album.id());
 
         for (JmPhotoMeta photoMeta : album.photoMetas()) {
-            CompletableFuture<DownloadResult> future = CompletableFuture.supplyAsync(() -> {
-                JmPhoto fullPhoto = getPhoto(photoMeta.id());
-                return downloadPhoto(fullPhoto, new DefaultPhotoPathGenerator(), executor);
-            }, executor);
-            photoFutures.add(future);
+            try {
+                semaphore.acquire();
+                CompletableFuture<DownloadResult> future = CompletableFuture.supplyAsync(() -> {
+                    JmPhoto fullPhoto = getPhoto(photoMeta.id());
+                    return downloadPhoto(fullPhoto, path.resolve(new DefaultPhotoPathGenerator().generatePath(fullPhoto)), executor);
+                }, executor);
+                future.whenComplete((result, throwable) -> {
+                    semaphore.release();
+                });
+                photoFutures.add(future);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+
         }
 
         CompletableFuture.allOf(photoFutures.toArray(new CompletableFuture[0])).join();
