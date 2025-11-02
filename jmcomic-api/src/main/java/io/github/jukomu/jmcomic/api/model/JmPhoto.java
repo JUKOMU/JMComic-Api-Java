@@ -129,11 +129,11 @@ public record JmPhoto(
     }
 
     /**
-     * 获取带序号的标题，例如 "第1話 标题"
+     * 获取带序号的标题，例如 "第1话 标题"
      *
      * @return 格式化的标题字符串
      */
     public String getIndexTitle() {
-        return String.format("第%d話 %s", sortOrder, title);
+        return String.format("第%d话 %s", sortOrder, title);
     }
 }
