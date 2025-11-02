@@ -15,6 +15,10 @@
 **Please note**: This project is currently in an active development and testing phase. The API may undergo incompatible changes in future versions.
 
 ---
+## 参考项目
+[![Readme Card](https://github-readme-stats.vercel.app/api/pin/?username=hect0x7&repo=JMComic-Crawler-Python)](https://github.com/hect0x7/JMComic-Crawler-Python)
+
+---
 ## 功能概述
 
 本项目采用模块化设计，将 **公共接口(API)** 与 **核心实现(Core)** 分离。
