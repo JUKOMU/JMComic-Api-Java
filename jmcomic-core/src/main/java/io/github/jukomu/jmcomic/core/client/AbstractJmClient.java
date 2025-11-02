@@ -166,6 +166,10 @@ public abstract class AbstractJmClient implements JmClient {
             // 路径为目录则拼接文件名
             path = path.resolve(image.getFilename());
         }
+        // 检查文件是否存在
+        if (Files.exists(path)) {
+            return;
+        }
         byte[] imageBytes = fetchImageBytes(image);
         // 确保路径存在
         if (path.getParent() != null) {

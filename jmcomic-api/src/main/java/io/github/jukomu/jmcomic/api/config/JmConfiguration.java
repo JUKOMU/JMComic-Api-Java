@@ -104,7 +104,7 @@ public final class JmConfiguration {
         private Duration timeout = Duration.ofSeconds(30);
         private int retryTimes = 5;
         private ExecutorService downloadExecutor = null;
-        private int downloadThreadPoolSize = 50; // -1 表示使用默认值 (CPU核心数)
+        private int downloadThreadPoolSize = 12; // -1 表示使用默认值 (CPU核心数)
         private int cacheSize = 100 * 1024 * 1024;
         private int concurrentPhotoDownloads = 3;
 
