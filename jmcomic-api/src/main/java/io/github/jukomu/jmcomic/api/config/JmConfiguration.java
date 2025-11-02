@@ -31,6 +31,7 @@ public final class JmConfiguration {
     private final int downloadThreadPoolSize;
     // 单位: Byte
     private final int cacheSize;
+    private final int concurrentPhotoDownloads;
 
     private JmConfiguration(Builder builder) {
         this.clientType = builder.clientType;
@@ -43,6 +44,7 @@ public final class JmConfiguration {
         this.downloadExecutor = builder.downloadExecutor;
         this.downloadThreadPoolSize = builder.downloadThreadPoolSize;
         this.cacheSize = builder.cacheSize;
+        this.concurrentPhotoDownloads = builder.concurrentPhotoDownloads;
     }
 
     // Getters for all fields
@@ -86,6 +88,10 @@ public final class JmConfiguration {
         return cacheSize;
     }
 
+    public int getConcurrentPhotoDownloads() {
+        return concurrentPhotoDownloads;
+    }
+
     /**
      * 用于创建 JmConfiguration 实例的 Builder
      */
@@ -98,8 +104,9 @@ public final class JmConfiguration {
         private Duration timeout = Duration.ofSeconds(30);
         private int retryTimes = 5;
         private ExecutorService downloadExecutor = null;
-        private int downloadThreadPoolSize = -1; // -1 表示使用默认值 (CPU核心数)
+        private int downloadThreadPoolSize = 50; // -1 表示使用默认值 (CPU核心数)
         private int cacheSize = 100 * 1024 * 1024;
+        private int concurrentPhotoDownloads = 3;
 
         public Builder clientType(ClientType type) {
             this.clientType = Objects.requireNonNull(type);
@@ -156,6 +163,12 @@ public final class JmConfiguration {
         public Builder cacheSize(int size) {
             if (size < 0) throw new IllegalArgumentException("Cache size must be non-negative.");
             this.cacheSize = size;
+            return this;
+        }
+
+        public Builder concurrentPhotoDownloads(int size) {
+            if (size < 0) throw new IllegalArgumentException("Concurrent photo uploads must be non-negative.");
+            this.concurrentPhotoDownloads = size;
             return this;
         }
 
