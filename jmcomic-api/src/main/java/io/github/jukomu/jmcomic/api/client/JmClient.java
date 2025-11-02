@@ -4,11 +4,9 @@ import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.api.strategy.IAlbumPathGenerator;
 import io.github.jukomu.jmcomic.api.strategy.IImagePathGenerator;
 import io.github.jukomu.jmcomic.api.strategy.IPhotoPathGenerator;
-import okhttp3.Cookie;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -81,10 +79,6 @@ public interface JmClient extends AutoCloseable {
      * @return 用户信息对象
      */
     JmUserInfo login(String username, String password);
-
-    List<Cookie> getCookies();
-
-    void setCookies(List<Cookie> cookies);
 
     // == 用户交互层 ==
 

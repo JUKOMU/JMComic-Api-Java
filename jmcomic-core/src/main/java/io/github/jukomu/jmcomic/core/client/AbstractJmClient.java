@@ -115,14 +115,12 @@ public abstract class AbstractJmClient implements JmClient {
 
     // == 会话管理层 (公共实现) ==
 
-    @Override
     public List<Cookie> getCookies() {
         CookieJar cookieJar = httpClient.cookieJar();
         HttpUrl dummyUrl = newHttpUrlBuilder().build();
         return cookieJar.loadForRequest(dummyUrl);
     }
 
-    @Override
     public void setCookies(List<Cookie> cookies) {
         // 清除所有 cookies
         this.cookieManager.getCookieStore().removeAll();
