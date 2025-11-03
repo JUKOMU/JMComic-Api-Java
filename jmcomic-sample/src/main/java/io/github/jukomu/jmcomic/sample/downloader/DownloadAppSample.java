@@ -1,4 +1,4 @@
-package io.github.jukomu.jmcomic.sample;
+package io.github.jukomu.jmcomic.sample.downloader;
 
 import io.github.jukomu.jmcomic.api.client.DownloadResult;
 import io.github.jukomu.jmcomic.api.client.JmClient;
