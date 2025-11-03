@@ -14,7 +14,7 @@ import io.github.jukomu.jmcomic.core.JmComic;
  * @Project: jmcomic-api-java
  * @Date: 2025/11/2
  */
-public class DownloadAppSample {
+public class DownloaderSample {
     private static JmClient client;
 
     public static void main(String[] args) {
