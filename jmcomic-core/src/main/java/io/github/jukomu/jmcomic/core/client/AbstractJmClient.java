@@ -50,6 +50,7 @@ public abstract class AbstractJmClient implements JmClient {
     protected final JmDomainManager domainManager;
     protected final CachePool<CacheKey, Object> cachePool;
     protected final int concurrentPhotoDownloads;
+    protected final int concurrentImageDownloads;
 
     protected AbstractJmClient(JmConfiguration config, OkHttpClient httpClient, CookieManager cookieManager, JmDomainManager domainManager) {
         this.config = Objects.requireNonNull(config);
@@ -58,8 +59,8 @@ public abstract class AbstractJmClient implements JmClient {
         this.domainManager = Objects.requireNonNull(domainManager);
 
         // 根据配置决定 ExecutorService
-        if (config.getDownloadExecutor() != null) {
-            this.internalExecutor = config.getDownloadExecutor();
+        if (config.getExecutor() != null) {
+            this.internalExecutor = config.getExecutor();
             this.isExternalExecutor = true;
         } else {
             int poolSize = (config.getDownloadThreadPoolSize() > 0)
@@ -72,6 +73,8 @@ public abstract class AbstractJmClient implements JmClient {
         this.cachePool = new CachePool<>(config.getCacheSize());
         // 同时下载的章节数
         this.concurrentPhotoDownloads = config.getConcurrentPhotoDownloads();
+        // 同时下载的图片数
+        this.concurrentImageDownloads = config.getConcurrentImageDownloads();
         this.initialize();
     }
 
@@ -208,25 +211,34 @@ public abstract class AbstractJmClient implements JmClient {
 
     @Override
     public DownloadResult downloadPhoto(JmPhoto photo, Path path, ExecutorService executor) {
+        Semaphore semaphore = new Semaphore(concurrentImageDownloads);
         List<CompletableFuture<Path>> futures = new ArrayList<>();
         List<Path> successfulFiles = Collections.synchronizedList(new ArrayList<>());
         ConcurrentHashMap<JmImage, Exception> failedTasks = new ConcurrentHashMap<>();
 
         for (JmImage image : photo.images()) {
-            CompletableFuture<Path> future = CompletableFuture.supplyAsync(() -> {
-                try {
-                    Objects.requireNonNull(path, "Photo path generator returned null for photo " + photo.id());
+            try {
+                semaphore.acquire();
+                CompletableFuture<Path> future = CompletableFuture.supplyAsync(() -> {
+                    try {
+                        Objects.requireNonNull(path, "Photo path generator returned null for photo " + photo.id());
 
-                    Path destination = path.resolve(image.filename());
+                        Path destination = path.resolve(image.filename());
 
-                    downloadImage(image, destination);
-                    return destination;
-                } catch (Exception e) {
-                    failedTasks.put(image, e);
-                    throw new CompletionException(e);
-                }
-            }, executor);
-            futures.add(future);
+                        downloadImage(image, destination);
+                        return destination;
+                    } catch (Exception e) {
+                        failedTasks.put(image, e);
+                        throw new CompletionException(e);
+                    }
+                }, executor);
+                future.whenComplete((result, throwable) -> semaphore.release());
+                futures.add(future);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                failedTasks.put(image, e);
+                break;
+            }
         }
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();

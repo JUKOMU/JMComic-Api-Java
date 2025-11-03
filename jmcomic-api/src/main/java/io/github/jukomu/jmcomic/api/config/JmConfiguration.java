@@ -19,19 +19,30 @@ import java.util.concurrent.ExecutorService;
  * @Date: 2025/10/28
  */
 public final class JmConfiguration {
-
+    // 客户端类型
     private final ClientType clientType;
+    // 存储API客户端的域名
     private final List<String> apiDomains;
+    // 存储HTML客户端的域名
     private final List<String> htmlDomains;
+    // 代理设置
     private final Proxy proxy;
+    // 请求头
     private final Map<String, String> headers;
+    // 超时时间
     private final Duration timeout;
+    // 重试次数
     private final int retryTimes;
-    private final ExecutorService downloadExecutor;
+    // 请求的线程池
+    private final ExecutorService executor;
+    // 线程池大小
     private final int downloadThreadPoolSize;
-    // 单位: Byte
+    // 缓存大小, 单位: Byte
     private final int cacheSize;
+    // 同时下载的章节数
     private final int concurrentPhotoDownloads;
+    // 同时下载的图片数
+    private final int concurrentImageDownloads;
 
     private JmConfiguration(Builder builder) {
         this.clientType = builder.clientType;
@@ -41,10 +52,11 @@ public final class JmConfiguration {
         this.headers = Collections.unmodifiableMap(new HashMap<>(builder.headers));
         this.timeout = builder.timeout;
         this.retryTimes = builder.retryTimes;
-        this.downloadExecutor = builder.downloadExecutor;
+        this.executor = builder.executor;
         this.downloadThreadPoolSize = builder.downloadThreadPoolSize;
         this.cacheSize = builder.cacheSize;
         this.concurrentPhotoDownloads = builder.concurrentPhotoDownloads;
+        this.concurrentImageDownloads = builder.concurrentImageDownloads;
     }
 
     // Getters for all fields
@@ -76,8 +88,8 @@ public final class JmConfiguration {
         return retryTimes;
     }
 
-    public ExecutorService getDownloadExecutor() {
-        return downloadExecutor;
+    public ExecutorService getExecutor() {
+        return executor;
     }
 
     public int getDownloadThreadPoolSize() {
@@ -92,6 +104,10 @@ public final class JmConfiguration {
         return concurrentPhotoDownloads;
     }
 
+    public int getConcurrentImageDownloads() {
+        return concurrentImageDownloads;
+    }
+
     /**
      * 用于创建 JmConfiguration 实例的 Builder
      */
@@ -103,10 +119,11 @@ public final class JmConfiguration {
         private Map<String, String> headers = new HashMap<>();
         private Duration timeout = Duration.ofSeconds(30);
         private int retryTimes = 5;
-        private ExecutorService downloadExecutor = null;
+        private ExecutorService executor = null;
         private int downloadThreadPoolSize = 12; // -1 表示使用默认值 (CPU核心数)
         private int cacheSize = 100 * 1024 * 1024;
         private int concurrentPhotoDownloads = 3;
+        private int concurrentImageDownloads = 20;
 
         public Builder clientType(ClientType type) {
             this.clientType = Objects.requireNonNull(type);
@@ -155,8 +172,8 @@ public final class JmConfiguration {
             return this;
         }
 
-        public Builder downloadExecutor(ExecutorService executor) {
-            this.downloadExecutor = executor;
+        public Builder executor(ExecutorService executor) {
+            this.executor = executor;
             return this;
         }
 
@@ -169,6 +186,12 @@ public final class JmConfiguration {
         public Builder concurrentPhotoDownloads(int size) {
             if (size < 0) throw new IllegalArgumentException("Concurrent photo uploads must be non-negative.");
             this.concurrentPhotoDownloads = size;
+            return this;
+        }
+
+        public Builder concurrentImageDownloads(int size) {
+            if (size < 0) throw new IllegalArgumentException("Concurrent image uploads must be non-negative.");
+            this.concurrentImageDownloads = size;
             return this;
         }
 
@@ -191,7 +214,7 @@ public final class JmConfiguration {
         }
 
         public JmConfiguration build() {
-            if (this.downloadExecutor != null) {
+            if (this.executor != null) {
                 this.downloadThreadPoolSize = -1;
             }
             return new JmConfiguration(this);
