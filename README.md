@@ -94,7 +94,7 @@
 以下是一个下载器的完整示例：
 
 ```java
-package io.github.jukomu.jmcomic.sample;
+package io.github.jukomu.jmcomic.sample.downloader;
 
 import io.github.jukomu.jmcomic.api.client.DownloadResult;
 import io.github.jukomu.jmcomic.api.client.JmClient;
@@ -110,7 +110,7 @@ import io.github.jukomu.jmcomic.core.JmComic;
  * @Project: jmcomic-api-java
  * @Date: 2025/11/2
  */
-public class DownloadAppSample {
+public class DownloaderSample {
     private static JmClient client;
 
     public static void main(String[] args) {
@@ -173,14 +173,15 @@ public class DownloadAppSample {
 import java.time.Duration;
 
 JmConfiguration config = new JmConfiguration.Builder()
-                .clientType(ClientType.HTML) // 切换为HTML客户端
-                .proxy("127.0.0.1", 7890) // 设置HTTP代理
-                .timeout(Duration.ofSeconds(60)) // 设置网络超时为60秒
-                .retryTimes(10) // 设置最大重试次数
-                .downloadThreadPoolSize(12) // 设置下载线程池大小
-                .cacheSize(100*1024*1024) // 设置缓存池大小,单位: Byte
-                .concurrentPhotoDownloads(2) // 设置同时下载的章节数
-                .build();
+        .clientType(ClientType.HTML) // 切换为HTML客户端
+        .proxy("127.0.0.1", 7890) // 设置HTTP代理
+        .timeout(Duration.ofSeconds(60)) // 设置网络超时为60秒
+        .retryTimes(10) // 设置最大重试次数
+        .downloadThreadPoolSize(12) // 设置下载线程池大小
+        .cacheSize(100*1024*1024) // 设置缓存池大小,单位: Byte
+        .concurrentPhotoDownloads(2) // 设置同时下载的章节数
+        .concurrentImageDownloads(15) // 设置同时下载的图片数
+        .build();
 ```
 
 ### 自定义文件存储路径
