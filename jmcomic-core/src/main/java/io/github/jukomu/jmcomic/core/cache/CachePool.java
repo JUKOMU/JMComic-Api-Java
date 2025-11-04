@@ -1,5 +1,8 @@
 package io.github.jukomu.jmcomic.core.cache;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -13,6 +16,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * @Date: 2025/11/1
  */
 public final class CachePool<K, V> {
+
+    private static final Logger logger = LoggerFactory.getLogger(CachePool.class);
 
     private static class Node<K, V> {
         final K key;
@@ -60,8 +65,10 @@ public final class CachePool<K, V> {
         try {
             Node<K, V> node = cacheMap.get(key);
             if (node == null) {
+                logger.debug("Cache MISS for key: {}", key);
                 return null;
             }
+            logger.debug("Cache HIT for key: {}", key);
             // 缓存命中，需要升级锁来更新频率
             readLock.unlock();
             writeLock.lock();
@@ -72,6 +79,7 @@ public final class CachePool<K, V> {
                     updateFreq(node);
                     return node.value;
                 }
+                logger.debug("Cache MISS (removed during lock upgrade) for key: {}", key);
                 return null; // 在锁升级期间被移除了
             } finally {
                 readLock.lock(); // 锁降级
@@ -102,11 +110,13 @@ public final class CachePool<K, V> {
                 node.weight = sizer.sizeOf(value);
                 currentSize += node.weight;
                 updateFreq(node);
+                logger.debug("Cache UPDATED for key: {}", key);
             } else {
                 // 插入新值
                 int weight = sizer.sizeOf(value);
                 // 如果单个对象就超过容量，则不缓存
                 if (weight > capacity) {
+                    logger.debug("Cache NOT ADDED for key: {} (single item too large)", key);
                     return;
                 }
                 // 淘汰直到有足够空间
@@ -117,6 +127,7 @@ public final class CachePool<K, V> {
                 Node<K, V> newNode = new Node<>(key, value, weight);
                 addNode(newNode);
                 currentSize += weight;
+                logger.debug("Cache ADDED for key: {}", key);
             }
         } finally {
             writeLock.unlock();
@@ -138,6 +149,9 @@ public final class CachePool<K, V> {
                     set.remove(node);
                 }
                 currentSize -= node.weight;
+                logger.debug("Cache REMOVED for key: {}", key);
+            } else {
+                logger.debug("Cache REMOVE FAILED (key not found) for key: {}", key);
             }
         } finally {
             writeLock.unlock();
@@ -154,6 +168,7 @@ public final class CachePool<K, V> {
             freqMap.clear();
             currentSize = 0;
             minFreq = 0;
+            logger.debug("Cache CLEARED");
         } finally {
             writeLock.unlock();
         }
@@ -177,6 +192,7 @@ public final class CachePool<K, V> {
 
         node.freq++;
         freqMap.computeIfAbsent(node.freq, k -> new LinkedHashSet<>()).add(node);
+        logger.debug("Cache frequency updated for key: {} from {} to {}", node.key, oldFreq, node.freq);
     }
 
     private void evict() {
@@ -187,6 +203,7 @@ public final class CachePool<K, V> {
             minFreq++;
             minFreqSet = freqMap.get(minFreq);
             if (minFreqSet == null || minFreqSet.isEmpty()) {
+                logger.debug("Cache eviction skipped: minFreqSet is empty or null");
                 return; // 缓存为空，不应发生
             }
         }
@@ -196,5 +213,6 @@ public final class CachePool<K, V> {
         minFreqSet.remove(nodeToEvict);
         cacheMap.remove(nodeToEvict.key);
         currentSize -= nodeToEvict.weight;
+        logger.debug("Cache EVICTED key: {} (freq: {}, weight: {})", nodeToEvict.key, nodeToEvict.freq, nodeToEvict.weight);
     }
 }

@@ -1,7 +1,8 @@
 package io.github.jukomu.jmcomic.core.net.model;
 
-import com.alibaba.fastjson2.JSONException;
-import com.alibaba.fastjson2.JSONObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.reflect.TypeToken;
+import io.github.jukomu.jmcomic.core.util.JsonUtils;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
@@ -156,7 +157,15 @@ public class CommonResponse {
         try (ByteArrayInputStream bis = new ByteArrayInputStream(compressedData);
              GZIPInputStream gis = new GZIPInputStream(bis);
              ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
-            gis.transferTo(bos);
+
+            // 使用一个缓冲区和 while 循环来替代 transferTo 方法
+            // 这种方式在所有 Java 和 Android 版本上都兼容
+            byte[] buffer = new byte[8192]; // 创建一个 8KB 的缓冲区
+            int len;
+            while ((len = gis.read(buffer)) != -1) {
+                bos.write(buffer, 0, len);
+            }
+
             return bos.toByteArray();
         }
     }
@@ -190,21 +199,22 @@ public class CommonResponse {
      * 将响应解析为Map
      *
      * @return JSON Map
-     * @throws JSONException 如果解析失败
+     * @throws JsonParseException 如果解析失败
      */
     public Map<String, Object> getMap() {
         String text = getText();
         if (text == null || text.isEmpty()) {
             return Collections.emptyMap();
         }
-        return JSONObject.parseObject(text);
+        return JsonUtils.getGson().fromJson(text, new TypeToken<Map<String, Object>>() {
+        }.getType());
     }
 
     /**
      * 将响应解析为JSON
      *
      * @return JSON
-     * @throws JSONException 如果解析失败
+     * @throws JsonParseException 如果解析失败
      */
     public Map<String, Object> getJson() {
         return getMap();

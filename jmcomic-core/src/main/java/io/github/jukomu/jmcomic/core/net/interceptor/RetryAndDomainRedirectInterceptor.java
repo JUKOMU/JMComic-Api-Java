@@ -7,6 +7,8 @@ import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -19,6 +21,7 @@ import java.io.IOException;
  */
 public final class RetryAndDomainRedirectInterceptor implements Interceptor {
 
+    private static final Logger logger = LoggerFactory.getLogger(RetryAndDomainRedirectInterceptor.class);
     private final JmDomainManager domainManager;
     private final int maxRetriesPerRequest;
 
@@ -51,7 +54,14 @@ public final class RetryAndDomainRedirectInterceptor implements Interceptor {
                 requestToProceed = addAddHeaders(originalRequest, "18comic.vip");
             }
 
-            String currentHost = requestToProceed.url().host();
+            HttpUrl requestUrl = requestToProceed.url();
+            String currentHost = requestUrl.host();
+
+            if (tryCount == 0) {
+                logger.info("Sending request to {}", requestUrl);
+            } else {
+                logger.warn("Retrying request to {} (Attempt {}/{})", requestUrl, tryCount, maxRetriesPerRequest);
+            }
 
             try {
                 Response response = chain.proceed(requestToProceed);
@@ -66,19 +76,23 @@ public final class RetryAndDomainRedirectInterceptor implements Interceptor {
                     domainManager.reportFailure(currentHost);
                     response.close();
                     lastException = new IOException("Server error: " + response.code() + " for host " + currentHost);
+                    logger.warn("Request to {} failed with server error: {}", requestUrl, response.code());
                     continue;
                 }
 
                 // 其他非成功响应 (4xx, 3xx)，不重试，直接返回
+                logger.error("Request to {} failed with client error: {}. No retry will be attempted.", requestUrl, response.code());
                 return response;
 
             } catch (IOException e) {
                 domainManager.reportFailure(currentHost);
                 lastException = e;
+                logger.warn("Request to {} failed with IOException: {}", requestUrl, e.getMessage());
             }
         }
 
         // 如果循环结束仍未成功，抛出最后一次记录的异常
+        logger.error("Request for {} failed after {} retries.", originalRequest.url(), maxRetriesPerRequest, lastException);
         throw new IOException("Request failed after " + maxRetriesPerRequest + " retries for URL: " + originalRequest.url(), lastException);
     }
 

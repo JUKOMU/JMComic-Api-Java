@@ -1,7 +1,8 @@
 package io.github.jukomu.jmcomic.core.parser;
 
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson2.JSONException;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import io.github.jukomu.jmcomic.api.exception.ApiResponseException;
 import io.github.jukomu.jmcomic.api.exception.ParseResponseException;
 import io.github.jukomu.jmcomic.api.model.*;
@@ -345,7 +346,11 @@ public final class HtmlParser {
 
     private static List<JmImage> buildImageList(String photoId, String scrambleId, String urlTemplate, String queryParams, String pageArrJson) {
         try {
-            List<String> filenames = JSONObject.parseArray(pageArrJson, String.class);
+            JsonArray jsonArray = JsonParser.parseString(pageArrJson).getAsJsonArray();
+            List<String> filenames = new ArrayList<>();
+            for (JsonElement element : jsonArray) {
+                filenames.add(element.getAsString());
+            }
 
             List<JmImage> images = new ArrayList<>();
             for (int i = 0; i < filenames.size(); i++) {
@@ -360,7 +365,7 @@ public final class HtmlParser {
                 ));
             }
             return images;
-        } catch (JSONException e) {
+        } catch (Exception e) {
             throw new ParseResponseException("Failed to parse page_arr JSON for photo: " + photoId, e);
         }
     }

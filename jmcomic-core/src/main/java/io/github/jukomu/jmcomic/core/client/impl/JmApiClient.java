@@ -1,13 +1,13 @@
 package io.github.jukomu.jmcomic.core.client.impl;
 
-import com.alibaba.fastjson2.JSONException;
-import com.alibaba.fastjson2.JSONObject;
-import io.github.jukomu.jmcomic.api.config.JmConfiguration;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import io.github.jukomu.jmcomic.api.enums.TimeOption;
 import io.github.jukomu.jmcomic.api.exception.ApiResponseException;
 import io.github.jukomu.jmcomic.api.exception.ParseResponseException;
 import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
+import io.github.jukomu.jmcomic.core.config.JmConfiguration;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
 import io.github.jukomu.jmcomic.core.crypto.JmCryptoTool;
 import io.github.jukomu.jmcomic.core.net.model.JmApiResponse;
@@ -17,6 +17,8 @@ import io.github.jukomu.jmcomic.core.net.provider.JmDomainManager;
 import io.github.jukomu.jmcomic.core.parser.ApiParser;
 import okhttp3.*;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.CookieManager;
 import java.time.Instant;
@@ -30,6 +32,8 @@ import java.util.List;
  */
 public final class JmApiClient extends AbstractJmClient {
 
+    private static final Logger logger = LoggerFactory.getLogger(JmApiClient.class);
+
     public JmApiClient(JmConfiguration config, OkHttpClient httpClient, CookieManager cookieManager, JmDomainManager domainManager) {
         super(config, httpClient, cookieManager, domainManager);
     }
@@ -41,21 +45,38 @@ public final class JmApiClient extends AbstractJmClient {
 
     @Override
     public void updateDomains() {
-        for (String url : JmConstants.API_URL_DOMAIN_SERVER_LIST) {
-            Request request = new Request.Builder()
-                    .url(url)
-                    .get()
-                    .build();
+        logger.info("开始获取最新域名列表");
+        boolean success = false;
+        String oldDomains = domainManager.getDomains().toString();
 
-            JmResponse jmResponse = executeRequest(request);
-            JmHtmlResponse jmHtmlResponse = new JmHtmlResponse(jmResponse);
-            String decodedJson = JmCryptoTool.decryptApiResponse(jmHtmlResponse.getHtml(), "", JmConstants.API_DOMAIN_SERVER_SECRET);
-            List<String> domains = ApiParser.parseDomainsFromDomainServer(decodedJson);
-            if (domains.isEmpty()) {
-                continue;
+        for (String url : JmConstants.API_URL_DOMAIN_SERVER_LIST) {
+            try {
+                Request request = new Request.Builder()
+                        .url(url)
+                        .get()
+                        .build();
+
+                JmResponse jmResponse = executeRequest(request);
+                JmHtmlResponse jmHtmlResponse = new JmHtmlResponse(jmResponse);
+                String decodedJson = JmCryptoTool.decryptApiResponse(jmHtmlResponse.getHtml(), "", JmConstants.API_DOMAIN_SERVER_SECRET);
+                List<String> newDomains = ApiParser.parseDomainsFromDomainServer(decodedJson);
+
+                if (newDomains.isEmpty()) {
+                    logger.warn("从 {} 获取的域名列表为空，尝试下一个地址。", url);
+                    continue;
+                }
+
+                domainManager.updateDomains(newDomains);
+                logger.info("获取最新域名列表成功: {} -> {}", oldDomains, newDomains);
+                success = true;
+                break;
+            } catch (Exception e) {
+                logger.warn("从 {} 获取域名列表失败: {}", url, e.getMessage());
             }
-            domainManager.updateDomains(domains);
-            break;
+        }
+
+        if (!success) {
+            logger.error("获取最新域名列表失败。");
         }
     }
 
@@ -189,29 +210,47 @@ public final class JmApiClient extends AbstractJmClient {
         try {
             JmApiResponse jmApiResponse = executePostRequest(url, formBody);
             String decodedData = jmApiResponse.getDecodedData();
-            JSONObject jsonObject = JSONObject.parseObject(decodedData);
+            JsonObject jsonObject = JsonParser.parseString(decodedData).getAsJsonObject();
+
+            String uid = jsonObject.has("uid") && !jsonObject.get("uid").isJsonNull() ? jsonObject.get("uid").getAsString() : "";
+            String usernameResult = jsonObject.has("username") && !jsonObject.get("username").isJsonNull() ? jsonObject.get("username").getAsString() : "";
+            String email = jsonObject.has("email") && !jsonObject.get("email").isJsonNull() ? jsonObject.get("email").getAsString() : "";
+            String emailVerifiedStr = jsonObject.has("emailverified") && !jsonObject.get("emailverified").isJsonNull() ? jsonObject.get("emailverified").getAsString() : "";
+            String photo = jsonObject.has("photo") && !jsonObject.get("photo").isJsonNull() ? jsonObject.get("photo").getAsString() : "";
+            String fname = jsonObject.has("fname") && !jsonObject.get("fname").isJsonNull() ? jsonObject.get("fname").getAsString() : "";
+            String gender = jsonObject.has("gender") && !jsonObject.get("gender").isJsonNull() ? jsonObject.get("gender").getAsString() : "";
+            String message = jsonObject.has("message") && !jsonObject.get("message").isJsonNull() ? jsonObject.get("message").getAsString() : "";
+            int coin = jsonObject.has("coin") && !jsonObject.get("coin").isJsonNull() ? jsonObject.get("coin").getAsInt() : 0;
+            int albumFavorites = jsonObject.has("album_favorites") && !jsonObject.get("album_favorites").isJsonNull() ? jsonObject.get("album_favorites").getAsInt() : 0;
+            int level = jsonObject.has("level") && !jsonObject.get("level").isJsonNull() ? jsonObject.get("level").getAsInt() : 0;
+            String levelName = jsonObject.has("level_name") && !jsonObject.get("level_name").isJsonNull() ? jsonObject.get("level_name").getAsString() : "";
+            long nextLevelExp = jsonObject.has("nextLevelExp") && !jsonObject.get("nextLevelExp").isJsonNull() ? jsonObject.get("nextLevelExp").getAsLong() : 0L;
+            long exp = jsonObject.has("exp") && !jsonObject.get("exp").isJsonNull() ? jsonObject.get("exp").getAsLong() : 0L;
+            double expPercent = jsonObject.has("expPercent") && !jsonObject.get("expPercent").isJsonNull() ? jsonObject.get("expPercent").getAsDouble() : 0.0;
+            int albumFavoritesMax = jsonObject.has("album_favorites_max") && !jsonObject.get("album_favorites_max").isJsonNull() ? jsonObject.get("album_favorites_max").getAsInt() : 0;
+
+
             JmUserInfo userInfo = new JmUserInfo(
-                    // 2. 使用 Fastjson 的方法逐个提取字段
-                    StringUtils.defaultIfBlank(jsonObject.getString("uid"), ""),
-                    StringUtils.defaultIfBlank(jsonObject.getString("username"), ""),
-                    StringUtils.defaultIfBlank(jsonObject.getString("email"), ""),
-                    "yes".equalsIgnoreCase(jsonObject.getString("emailverified")),
-                    StringUtils.defaultIfBlank(jsonObject.getString("photo"), ""),
-                    StringUtils.defaultIfBlank(jsonObject.getString("fname"), ""),
-                    StringUtils.defaultIfBlank(jsonObject.getString("gender"), ""),
-                    StringUtils.defaultIfBlank(jsonObject.getString("message"), ""),
-                    jsonObject.getIntValue("coin"),
-                    jsonObject.getIntValue("album_favorites"),
-                    jsonObject.getIntValue("level"),
-                    StringUtils.defaultIfBlank(jsonObject.getString("level_name"), ""),
-                    jsonObject.getLongValue("nextLevelExp"),
-                    jsonObject.getLongValue("exp"),
-                    jsonObject.getDoubleValue("expPercent"),
-                    jsonObject.getIntValue("album_favorites_max")
+                    StringUtils.defaultIfBlank(uid, ""),
+                    StringUtils.defaultIfBlank(usernameResult, ""),
+                    StringUtils.defaultIfBlank(email, ""),
+                    "yes".equalsIgnoreCase(emailVerifiedStr),
+                    StringUtils.defaultIfBlank(photo, ""),
+                    StringUtils.defaultIfBlank(fname, ""),
+                    StringUtils.defaultIfBlank(gender, ""),
+                    StringUtils.defaultIfBlank(message, ""),
+                    coin,
+                    albumFavorites,
+                    level,
+                    StringUtils.defaultIfBlank(levelName, ""),
+                    nextLevelExp,
+                    exp,
+                    expPercent,
+                    albumFavoritesMax
             );
 
             // 提取 's' 字段并创建 AVS Cookie
-            String avsCookieValue = jsonObject.getString("s");
+            String avsCookieValue = jsonObject.has("s") && !jsonObject.get("s").isJsonNull() ? jsonObject.get("s").getAsString() : null;
             if (StringUtils.isNotBlank(avsCookieValue)) {
                 Cookie avsCookie = new Cookie.Builder()
                         .name("AVS")
@@ -228,7 +267,11 @@ public final class JmApiClient extends AbstractJmClient {
             }
 
             return userInfo;
-        } catch (JSONException e) {
+        } catch (ApiResponseException e) {
+            logger.error("Failed to login with error message :{}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            // Gson throws different exceptions, so catch a more general one
             throw new ParseResponseException("Failed to parse login response JSON", e);
         }
     }
@@ -258,11 +301,21 @@ public final class JmApiClient extends AbstractJmClient {
 
         try {
             JmApiResponse jmApiResponse = executePostRequest(url, formBody);
-            JSONObject jsonObject = JSONObject.parseObject(jmApiResponse.getDecodedData());
-            if (!"ok".equalsIgnoreCase(jsonObject.getString("status"))) {
-                throw new ApiResponseException("Failed to add to favorites: " + jsonObject.getString("msg"));
+            JsonObject jsonObject = JsonParser.parseString(jmApiResponse.getDecodedData()).getAsJsonObject();
+
+            String status = "";
+            if (jsonObject.has("status") && !jsonObject.get("status").isJsonNull()) {
+                status = jsonObject.get("status").getAsString();
             }
-        } catch (JSONException e) {
+
+            if (!"ok".equalsIgnoreCase(status)) {
+                String msg = "";
+                if (jsonObject.has("msg") && !jsonObject.get("msg").isJsonNull()) {
+                    msg = jsonObject.get("msg").getAsString();
+                }
+                throw new ApiResponseException("Failed to add to favorites: " + msg);
+            }
+        } catch (Exception e) {
             throw new ParseResponseException("Failed to parse 'add to favorite' response", e);
         }
     }

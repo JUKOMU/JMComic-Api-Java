@@ -2,7 +2,6 @@ package io.github.jukomu.jmcomic.core.client;
 
 import io.github.jukomu.jmcomic.api.client.DownloadResult;
 import io.github.jukomu.jmcomic.api.client.JmClient;
-import io.github.jukomu.jmcomic.api.config.JmConfiguration;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
 import io.github.jukomu.jmcomic.api.exception.ApiResponseException;
 import io.github.jukomu.jmcomic.api.exception.NetworkException;
@@ -12,6 +11,7 @@ import io.github.jukomu.jmcomic.api.strategy.IImagePathGenerator;
 import io.github.jukomu.jmcomic.api.strategy.IPhotoPathGenerator;
 import io.github.jukomu.jmcomic.core.cache.CacheKey;
 import io.github.jukomu.jmcomic.core.cache.CachePool;
+import io.github.jukomu.jmcomic.core.config.JmConfiguration;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
 import io.github.jukomu.jmcomic.core.crypto.JmImageTool;
 import io.github.jukomu.jmcomic.core.net.model.JmResponse;
@@ -21,15 +21,14 @@ import io.github.jukomu.jmcomic.core.strategy.impl.DefaultImagePathGenerator;
 import io.github.jukomu.jmcomic.core.strategy.impl.DefaultPhotoPathGenerator;
 import okhttp3.*;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.CookieManager;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
@@ -40,7 +39,7 @@ import java.util.stream.Collectors;
  * @Date: 2025/10/28
  */
 public abstract class AbstractJmClient implements JmClient {
-
+    private final Logger logger = LoggerFactory.getLogger(AbstractJmClient.class);
     protected final JmConfiguration config;
     protected final OkHttpClient httpClient;
     private final ExecutorService internalExecutor;
@@ -70,7 +69,7 @@ public abstract class AbstractJmClient implements JmClient {
             this.isExternalExecutor = false;
         }
         // 根据配置决定 CachePool
-        this.cachePool = new CachePool<>(config.getCacheSize());
+        this.cachePool = config.getCachePool();
         // 同时下载的章节数
         this.concurrentPhotoDownloads = config.getConcurrentPhotoDownloads();
         // 同时下载的图片数
@@ -105,6 +104,34 @@ public abstract class AbstractJmClient implements JmClient {
         } catch (NetworkException e) {
             throw new NetworkException("Failed to fetch image due to I/O error", e);
         }
+    }
+
+    /**
+     * 根据本子id生成封面url
+     *
+     * @param albumId 本子id
+     * @param size    尺寸后缀，详情页无，搜索页为 “_3x4”
+     * @return 封面url
+     */
+    public String getAlbumCoverUrl(String albumId, String size) {
+        String imageDomain = JmConstants.DEFAULT_IMAGE_DOMAINS.get(new Random().nextInt(JmConstants.DEFAULT_IMAGE_DOMAINS.size()));
+        return getAlbumCoverUrl(albumId, imageDomain, size);
+    }
+
+    /**
+     * 根据本子id生成封面url
+     *
+     * @param albumId     本子id
+     * @param imageDomain 图片cdn域名
+     * @param size        尺寸后缀，详情页无，搜索页为 “_3x4”
+     * @return 封面url
+     */
+    public String getAlbumCoverUrl(String albumId, String imageDomain, String size) {
+        String path = "/media/albums/" + albumId + size + ".jpg";
+        if (imageDomain.startsWith(JmConstants.PROTOCOL_HTTPS)) {
+            return imageDomain + path;
+        }
+        return JmConstants.PROTOCOL_HTTPS + imageDomain + path;
     }
 
     /**
@@ -165,12 +192,14 @@ public abstract class AbstractJmClient implements JmClient {
 
     @Override
     public void downloadImage(JmImage image, Path path) throws IOException {
+        logger.info("开始下载图片: {}", image.getFilename());
         if (Files.isDirectory(path)) {
             // 路径为目录则拼接文件名
             path = path.resolve(image.getFilename());
         }
         // 检查文件是否存在
         if (Files.exists(path)) {
+            logger.info("图片 {} 已存在，跳过下载", image.getFilename());
             return;
         }
         byte[] imageBytes = fetchImageBytes(image);
@@ -179,6 +208,7 @@ public abstract class AbstractJmClient implements JmClient {
             Files.createDirectories(path.getParent());
         }
         Files.write(path, imageBytes);
+        logger.info("图片 {} 下载完成", image.getFilename());
     }
 
     @Override
@@ -211,6 +241,7 @@ public abstract class AbstractJmClient implements JmClient {
 
     @Override
     public DownloadResult downloadPhoto(JmPhoto photo, Path path, ExecutorService executor) {
+        logger.info("开始下载章节: {}", photo.getTitle());
         Semaphore semaphore = new Semaphore(concurrentImageDownloads);
         List<CompletableFuture<Path>> futures = new ArrayList<>();
         List<Path> successfulFiles = Collections.synchronizedList(new ArrayList<>());
@@ -241,7 +272,11 @@ public abstract class AbstractJmClient implements JmClient {
             }
         }
 
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        try {
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        } catch (CompletionException e) {
+            logger.warn("下载章节 '{}' 时部分图片下载失败，但这不会中断整体下载流程。", photo.getTitle());
+        }
 
         for (CompletableFuture<Path> future : futures) {
             if (!future.isCompletedExceptionally()) {
@@ -249,7 +284,9 @@ public abstract class AbstractJmClient implements JmClient {
             }
         }
 
-        return new DownloadResult(successfulFiles, failedTasks);
+        DownloadResult downloadResult = new DownloadResult(successfulFiles, failedTasks);
+        logger.info("章节 {} 下载完成. 成功: {}, 失败: {}", photo.getTitle(), downloadResult.getSuccessfulFiles().size(), downloadResult.getFailedTasks().size());
+        return downloadResult;
     }
 
     @Override
@@ -274,6 +311,7 @@ public abstract class AbstractJmClient implements JmClient {
 
     @Override
     public DownloadResult downloadAlbum(JmAlbum album, Path path, ExecutorService executor) {
+        logger.info("开始下载本子: {}", album.getTitle());
         Semaphore semaphore = new Semaphore(concurrentPhotoDownloads);
         // 有具体路径时直接下载章节直接无需拼接album路径
         List<CompletableFuture<DownloadResult>> photoFutures = new ArrayList<>();
@@ -287,17 +325,25 @@ public abstract class AbstractJmClient implements JmClient {
                     return downloadPhoto(fullPhoto, path.resolve(new DefaultPhotoPathGenerator().generatePath(fullPhoto)), executor);
                 }, executor);
                 future.whenComplete((result, throwable) -> {
+                    if (throwable != null) {
+                        logger.error("下载章节 '{}' (ID: {}) 失败: {}", photoMeta.getTitle(), photoMeta.id(), throwable.getCause() != null ? throwable.getCause().getMessage() : throwable.getMessage());
+                    }
                     semaphore.release();
                 });
                 photoFutures.add(future);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                logger.error("下载本子 '{}' 的过程被中断", album.getTitle());
                 break;
             }
 
         }
 
-        CompletableFuture.allOf(photoFutures.toArray(new CompletableFuture[0])).join();
+        try {
+            CompletableFuture.allOf(photoFutures.toArray(new CompletableFuture[0])).join();
+        } catch (CompletionException e) {
+            logger.warn("下载本子 '{}' 时部分章节下载失败，但这不会中断整体下载流程。", album.getTitle());
+        }
         List<Path> allSuccessfulFiles = Collections.synchronizedList(new ArrayList<>());
         ConcurrentHashMap<JmImage, Exception> allFailedTasks = new ConcurrentHashMap<>();
 
@@ -309,7 +355,9 @@ public abstract class AbstractJmClient implements JmClient {
             }
         }
 
-        return new DownloadResult(allSuccessfulFiles, allFailedTasks);
+        DownloadResult downloadResult = new DownloadResult(allSuccessfulFiles, allFailedTasks);
+        logger.info("本子 {} 下载完成. 成功图片数: {}, 失败图片数: {}", album.getTitle(), downloadResult.getSuccessfulFiles().size(), downloadResult.getFailedTasks().size());
+        return downloadResult;
     }
 
     // == 辅助方法==

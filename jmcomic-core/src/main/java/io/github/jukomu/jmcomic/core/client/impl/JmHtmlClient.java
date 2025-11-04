@@ -1,19 +1,21 @@
 package io.github.jukomu.jmcomic.core.client.impl;
 
-import com.alibaba.fastjson2.JSONException;
-import com.alibaba.fastjson2.JSONObject;
-import io.github.jukomu.jmcomic.api.config.JmConfiguration;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import io.github.jukomu.jmcomic.api.enums.Category;
 import io.github.jukomu.jmcomic.api.exception.ApiResponseException;
 import io.github.jukomu.jmcomic.api.exception.NetworkException;
 import io.github.jukomu.jmcomic.api.exception.ParseResponseException;
 import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
+import io.github.jukomu.jmcomic.core.config.JmConfiguration;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
 import io.github.jukomu.jmcomic.core.net.model.JmHtmlResponse;
 import io.github.jukomu.jmcomic.core.net.provider.JmDomainManager;
 import io.github.jukomu.jmcomic.core.parser.HtmlParser;
 import okhttp3.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.CookieManager;
@@ -31,6 +33,8 @@ import java.util.concurrent.*;
  */
 public final class JmHtmlClient extends AbstractJmClient {
 
+    private static final Logger logger = LoggerFactory.getLogger(JmHtmlClient.class);
+
     public JmHtmlClient(JmConfiguration config, OkHttpClient httpClient, CookieManager cookieManager, JmDomainManager domainManager) {
         super(config, httpClient, cookieManager, domainManager);
     }
@@ -42,22 +46,38 @@ public final class JmHtmlClient extends AbstractJmClient {
 
     @Override
     protected void updateDomains() {
+        logger.info("开始获取最新域名列表");
+        String oldDomains = domainManager.toString();
+
+        // 尝试第一种方法：从JmPub页面获取
         try {
-            List<String> htmlDomainAll = getHtmlDomainAll();
-            if (!htmlDomainAll.isEmpty()) {
-                domainManager.updateDomains(htmlDomainAll);
+            logger.info("尝试从 JmPub 页面获取域名...");
+            List<String> newDomains = getHtmlDomainAll();
+            if (!newDomains.isEmpty()) {
+                domainManager.updateDomains(newDomains);
+                logger.info("获取最新域名列表成功 (JmPub): {} -> {}", oldDomains, newDomains);
                 return;
             }
-        } catch (Exception ignored) {
+            logger.warn("从 JmPub 获取的域名列表为空。");
+        } catch (Exception e) {
+            logger.warn("从 JmPub 获取域名列表失败: {}", e.getMessage());
         }
+
+        // 如果第一种方法失败，尝试第二种方法：从Github页面获取
         try {
-            List<String> htmlDomainAllViaGithub = getHtmlDomainAllViaGithub();
-            if (!htmlDomainAllViaGithub.isEmpty()) {
-                domainManager.updateDomains(htmlDomainAllViaGithub);
-                return;
+            logger.info("尝试从 Github 页面获取域名...");
+            List<String> newDomains = getHtmlDomainAllViaGithub();
+            if (!newDomains.isEmpty()) {
+                domainManager.updateDomains(newDomains);
+                logger.info("获取最新域名列表成功 (Github): {} -> {}", oldDomains, newDomains);
+                return; // 成功，结束
             }
-        } catch (Exception ignored) {
+            logger.warn("从 Github 获取的域名列表为空。");
+        } catch (Exception e) {
+            logger.warn("从 Github 获取域名列表失败: {}", e.getMessage());
         }
+
+        logger.error("获取最新域名列表失败: 所有方法均无法获取有效域名。");
     }
 
     // == 核心数据获取层实现 ==
@@ -227,20 +247,36 @@ public final class JmHtmlClient extends AbstractJmClient {
             String json = jmHtmlResponse.getHtml();
             // 解析评论成功后的返回JSON
             // {"err":false,"cid":"336109","message":"\u8a55\u8ad6\u5df2\u767c\u4f48"}
-            JSONObject jsonObject = JSONObject.parseObject(json);
-            if (jsonObject.getBooleanValue("err", true)) {
-                throw new ApiResponseException("Failed to post comment :" + jsonObject.getString("message"));
+            JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
+
+            boolean err = true;
+            if (jsonObject.has("err") && !jsonObject.get("err").isJsonNull()) {
+                err = jsonObject.get("err").getAsBoolean();
+            }
+
+            if (err) {
+                String message = "";
+                if (jsonObject.has("message") && !jsonObject.get("message").isJsonNull()) {
+                    message = jsonObject.get("message").getAsString();
+                }
+                throw new ApiResponseException("Failed to post comment :" + message);
             }
             /*
               API响应中只包含评论ID (cid)，不包含新评论的完整信息。
               因此，返回的 JmComment 对象是部分填充的，
               其中 userId, username, postDate 等字段将为空或默认值。
              */
-            return new JmComment(jsonObject.getString("cid"), "", getLoggedInUserName(), commentText, "");
+            String cid = "";
+            if (jsonObject.has("cid") && !jsonObject.get("cid").isJsonNull()) {
+                cid = jsonObject.get("cid").getAsString();
+            }
+            return new JmComment(cid, "", getLoggedInUserName(), commentText, "");
         } catch (ApiResponseException e) {
             throw new ApiResponseException("Post comment failed" + e.getMessage());
         } catch (NetworkException e) {
             throw new NetworkException("Post comment request failed", e);
+        } catch (Exception e) {
+            throw new ParseResponseException("Failed to parse post comment response", e);
         }
     }
 
@@ -265,20 +301,36 @@ public final class JmHtmlClient extends AbstractJmClient {
             String json = jmHtmlResponse.getHtml();
             // 解析评论成功后的返回JSON
             // {"err":false,"cid":"336109","message":"\u8a55\u8ad6\u5df2\u767c\u4f48"}
-            JSONObject jsonObject = JSONObject.parseObject(json);
-            if (jsonObject.getBooleanValue("err", true)) {
-                throw new ApiResponseException("Failed to post comment :" + jsonObject.getString("message"));
+            JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
+
+            boolean err = true;
+            if (jsonObject.has("err") && !jsonObject.get("err").isJsonNull()) {
+                err = jsonObject.get("err").getAsBoolean();
+            }
+
+            if (err) {
+                String message = "";
+                if (jsonObject.has("message") && !jsonObject.get("message").isJsonNull()) {
+                    message = jsonObject.get("message").getAsString();
+                }
+                throw new ApiResponseException("Failed to post comment :" + message);
             }
             /*
               API响应中只包含评论ID (cid)，不包含新评论的完整信息。
               因此，返回的 JmComment 对象是部分填充的，
               其中 userId, username, postDate 等字段将为空或默认值。
              */
-            return new JmComment(jsonObject.getString("cid"), "", getLoggedInUserName(), commentText, "");
+            String cid = "";
+            if (jsonObject.has("cid") && !jsonObject.get("cid").isJsonNull()) {
+                cid = jsonObject.get("cid").getAsString();
+            }
+            return new JmComment(cid, "", getLoggedInUserName(), commentText, "");
         } catch (ApiResponseException e) {
             throw new ApiResponseException("Post comment failed" + e.getMessage());
         } catch (NetworkException e) {
             throw new NetworkException("Post comment request failed", e);
+        } catch (Exception e) {
+            throw new ParseResponseException("Failed to parse reply comment response", e);
         }
     }
 
@@ -295,13 +347,22 @@ public final class JmHtmlClient extends AbstractJmClient {
             JmHtmlResponse jmHtmlResponse = executeGetRequest(url);
             // 解析返回的简单JSON，检查状态
             try {
-                JSONObject jsonObject = JSONObject.parseObject(jmHtmlResponse.getHtml());
-                if (jsonObject.getIntValue("status", 0) != 1) {
-                    String message = jsonObject.getString("msg");
+                JsonObject jsonObject = JsonParser.parseString(jmHtmlResponse.getHtml()).getAsJsonObject();
+
+                int status = 0;
+                if (jsonObject.has("status") && !jsonObject.get("status").isJsonNull()) {
+                    status = jsonObject.get("status").getAsInt();
+                }
+
+                if (status != 1) {
+                    String message = "";
+                    if (jsonObject.has("msg") && !jsonObject.get("msg").isJsonNull()) {
+                        message = jsonObject.get("msg").getAsString();
+                    }
                     // 已经在收藏夹中
                     throw new ApiResponseException("Failed to add to favorites: " + message);
                 }
-            } catch (JSONException e) {
+            } catch (Exception e) {
                 throw new ParseResponseException("Failed to parse 'add to favorite' response", e);
             }
         } catch (ApiResponseException e) {

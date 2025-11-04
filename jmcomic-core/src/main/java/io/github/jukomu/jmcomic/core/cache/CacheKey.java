@@ -33,4 +33,12 @@ public final class CacheKey {
     public int hashCode() {
         return Objects.hash(type, id);
     }
+
+    @Override
+    public String toString() {
+        return "CacheKey{" +
+                "type=" + type.getSimpleName() +
+                ", id='" + id + '\'' +
+                '}';
+    }
 }

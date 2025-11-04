@@ -1,10 +1,9 @@
 package io.github.jukomu.jmcomic.core;
 
-import io.github.jukomu.jmcomic.api.client.JmClient;
-import io.github.jukomu.jmcomic.api.config.JmConfiguration;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
 import io.github.jukomu.jmcomic.core.client.impl.JmApiClient;
 import io.github.jukomu.jmcomic.core.client.impl.JmHtmlClient;
+import io.github.jukomu.jmcomic.core.config.JmConfiguration;
 import io.github.jukomu.jmcomic.core.net.OkHttpBuilder;
 
 /**
@@ -23,35 +22,36 @@ public final class JmComic {
     }
 
     /**
-     * 根据提供的配置创建一个新的 JmClient 实例。
-     * 这是获取客户端实例的唯一推荐方式。
+     * 根据配置创建一个新的 JmApiClient 实例
      *
-     * @param config 客户端的配置对象。不能为空。
-     * @return 一个根据配置初始化的 JmClient 实例。
-     * @throws IllegalArgumentException 如果配置中的 clientType 不被支持。
+     * @param config 客户端的配置对象
+     * @return JmApiClient
      */
-    public static JmClient newClient(JmConfiguration config) {
+    public static JmApiClient newApiClient(JmConfiguration config) {
         if (config == null) {
             throw new IllegalArgumentException("Configuration cannot be null.");
         }
-
-        // 构建包含所有网络组件的上下文
-        OkHttpBuilder.HttpClientContext context = OkHttpBuilder.build(config);
-
-        JmClient client;
-        // 根据 ClientType，将上下文中的组件注入到客户端实现中
-        ClientType clientType = config.getClientType();
-        switch (clientType) {
-            case API:
-                client = new JmApiClient(config, context.getClient(), context.getCookieManager(), context.getDomainManager());
-                break;
-            case HTML:
-                client = new JmHtmlClient(config, context.getClient(), context.getCookieManager(), context.getDomainManager());
-                break;
-            default:
-                throw new IllegalArgumentException("Unsupported client type: " + clientType);
+        if (config.getClientType() == ClientType.HTML) {
+            throw new IllegalArgumentException("Cannot create ApiClient with HTML client type.");
         }
+        OkHttpBuilder.HttpClientContext context = OkHttpBuilder.build(config);
+        return new JmApiClient(config, context.getClient(), context.getCookieManager(), context.getDomainManager());
+    }
 
-        return client;
+    /**
+     * 根据配置创建一个新的 JmHtmlClient 实例。
+     *
+     * @param config 客户端的配置对象
+     * @return JmHtmlClient
+     */
+    public static JmHtmlClient newHtmlClient(JmConfiguration config) {
+        if (config == null) {
+            throw new IllegalArgumentException("Configuration cannot be null.");
+        }
+        if (config.getClientType() == ClientType.API) {
+            throw new IllegalArgumentException("Cannot create HtmlClient with API client type.");
+        }
+        OkHttpBuilder.HttpClientContext context = OkHttpBuilder.build(config);
+        return new JmHtmlClient(config, context.getClient(), context.getCookieManager(), context.getDomainManager());
     }
 }

@@ -1,8 +1,9 @@
 package io.github.jukomu.jmcomic.core.parser;
 
-import com.alibaba.fastjson2.JSONArray;
-import com.alibaba.fastjson2.JSONException;
-import com.alibaba.fastjson2.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import io.github.jukomu.jmcomic.api.exception.ParseResponseException;
 import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
@@ -11,7 +12,6 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * @author JUKOMU
@@ -34,21 +34,76 @@ public final class ApiParser {
      */
     public static JmAlbum parseAlbum(String json) {
         try {
-            JSONObject jsonObject = JSONObject.parseObject(json);
+            JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
 
             // API返回的 "author" 字段实际是作者列表
-            String albumId = StringUtils.defaultIfBlank(jsonObject.getString("id"), "");
-            String name = StringUtils.defaultIfBlank(jsonObject.getString("name"), "");
-            String description = StringUtils.defaultIfBlank(jsonObject.getString("description"), "");
-            String likes = StringUtils.defaultIfBlank(jsonObject.getString("likes"), "0");
-            String totalViews = StringUtils.defaultIfBlank(jsonObject.getString("total_views"), "0");
-            int comment_total = jsonObject.getIntValue("comment_total", 0);
-            List<String> authors = jsonObject.getList("author", String.class);
-            List<String> works = jsonObject.getList("works", String.class);
-            List<String> actors = jsonObject.getList("actors", String.class);
-            List<String> tags = jsonObject.getList("tags", String.class);
-            List<JmAlbumMeta> relatedAlbums = parseRelatedAlbums(jsonObject.getJSONArray("related_list"));
-            List<JmPhotoMeta> photoMetas = parsePhotoMetas(jsonObject.getJSONArray("series"), albumId, name);
+            String albumId = "";
+            if (jsonObject.has("id") && !jsonObject.get("id").isJsonNull()) {
+                albumId = StringUtils.defaultIfBlank(jsonObject.get("id").getAsString(), "");
+            }
+
+            String name = "";
+            if (jsonObject.has("name") && !jsonObject.get("name").isJsonNull()) {
+                name = StringUtils.defaultIfBlank(jsonObject.get("name").getAsString(), "");
+            }
+
+            String description = "";
+            if (jsonObject.has("description") && !jsonObject.get("description").isJsonNull()) {
+                description = StringUtils.defaultIfBlank(jsonObject.get("description").getAsString(), "");
+            }
+
+            String likes = "0";
+            if (jsonObject.has("likes") && !jsonObject.get("likes").isJsonNull()) {
+                likes = StringUtils.defaultIfBlank(jsonObject.get("likes").getAsString(), "0");
+            }
+
+            String totalViews = "0";
+            if (jsonObject.has("total_views") && !jsonObject.get("total_views").isJsonNull()) {
+                totalViews = StringUtils.defaultIfBlank(jsonObject.get("total_views").getAsString(), "0");
+            }
+
+            int comment_total = 0;
+            if (jsonObject.has("comment_total") && !jsonObject.get("comment_total").isJsonNull()) {
+                comment_total = jsonObject.get("comment_total").getAsInt();
+            }
+
+            List<String> authors = new ArrayList<>();
+            if (jsonObject.has("author") && jsonObject.get("author").isJsonArray()) {
+                for (JsonElement element : jsonObject.getAsJsonArray("author")) {
+                    authors.add(element.getAsString());
+                }
+            }
+
+            List<String> works = new ArrayList<>();
+            if (jsonObject.has("works") && jsonObject.get("works").isJsonArray()) {
+                for (JsonElement element : jsonObject.getAsJsonArray("works")) {
+                    works.add(element.getAsString());
+                }
+            }
+
+            List<String> actors = new ArrayList<>();
+            if (jsonObject.has("actors") && jsonObject.get("actors").isJsonArray()) {
+                for (JsonElement element : jsonObject.getAsJsonArray("actors")) {
+                    actors.add(element.getAsString());
+                }
+            }
+
+            List<String> tags = new ArrayList<>();
+            if (jsonObject.has("tags") && jsonObject.get("tags").isJsonArray()) {
+                for (JsonElement element : jsonObject.getAsJsonArray("tags")) {
+                    tags.add(element.getAsString());
+                }
+            }
+
+            JsonArray relatedListArray = jsonObject.has("related_list") && jsonObject.get("related_list").isJsonArray()
+                    ? jsonObject.getAsJsonArray("related_list")
+                    : new JsonArray();
+            List<JmAlbumMeta> relatedAlbums = parseRelatedAlbums(relatedListArray);
+
+            JsonArray seriesArray = jsonObject.has("series") && jsonObject.get("series").isJsonArray()
+                    ? jsonObject.getAsJsonArray("series")
+                    : new JsonArray();
+            List<JmPhotoMeta> photoMetas = parsePhotoMetas(seriesArray, albumId, name);
 
             return new JmAlbum(
                     albumId,
@@ -68,25 +123,43 @@ public final class ApiParser {
                     relatedAlbums,
                     photoMetas
             );
-        } catch (JSONException e) {
+        } catch (Exception e) {
             throw new ParseResponseException("Failed to parse album API JSON", e);
         }
     }
 
-    private static List<JmAlbumMeta> parseRelatedAlbums(JSONArray relatedListArray) {
+    private static List<JmAlbumMeta> parseRelatedAlbums(JsonArray relatedListArray) {
         if (relatedListArray == null || relatedListArray.isEmpty()) {
             return Collections.emptyList();
         }
 
-        return relatedListArray.stream()
-                .map(item -> (JSONObject) item)
-                .map(node -> new JmAlbumMeta(
-                        StringUtils.defaultIfBlank(node.getString("id"), ""),
-                        StringUtils.defaultIfBlank(node.getString("name"), ""),
-                        List.of(StringUtils.defaultIfBlank(node.getString("author"), "")),
-                        Collections.emptyList()
-                ))
-                .collect(Collectors.toList());
+        List<JmAlbumMeta> results = new ArrayList<>();
+        for (JsonElement item : relatedListArray) {
+            JsonObject node = item.getAsJsonObject();
+
+            String id = null;
+            if (node.has("id") && !node.get("id").isJsonNull()) {
+                id = node.get("id").getAsString();
+            }
+
+            String name = null;
+            if (node.has("name") && !node.get("name").isJsonNull()) {
+                name = node.get("name").getAsString();
+            }
+
+            String author = null;
+            if (node.has("author") && !node.get("author").isJsonNull()) {
+                author = node.get("author").getAsString();
+            }
+
+            results.add(new JmAlbumMeta(
+                    StringUtils.defaultIfBlank(id, ""),
+                    StringUtils.defaultIfBlank(name, ""),
+                    List.of(StringUtils.defaultIfBlank(author, "")),
+                    Collections.emptyList()
+            ));
+        }
+        return results;
     }
 
     /**
@@ -96,20 +169,38 @@ public final class ApiParser {
      * @param albumId     章节所属本子id
      * @param albumName   章节所属本子名字
      */
-    private static List<JmPhotoMeta> parsePhotoMetas(JSONArray seriesArray, String albumId, String albumName) {
+    private static List<JmPhotoMeta> parsePhotoMetas(JsonArray seriesArray, String albumId, String albumName) {
         if (seriesArray == null || seriesArray.isEmpty()) {
             // 单章本, series 列表为空
             return List.of(new JmPhotoMeta(albumId, albumName, 1));
         }
 
-        return seriesArray.stream()
-                .map(item -> (JSONObject) item)
-                .map(node -> new JmPhotoMeta(
-                        StringUtils.defaultIfBlank(node.getString("id"), ""),
-                        StringUtils.defaultIfBlank(node.getString("name"), ""),
-                        node.getIntValue("sort", 0)
-                ))
-                .collect(Collectors.toList());
+        List<JmPhotoMeta> photoMetas = new ArrayList<>();
+        for (JsonElement item : seriesArray) {
+            JsonObject node = item.getAsJsonObject();
+
+            String id = "";
+            if (node.has("id") && !node.get("id").isJsonNull()) {
+                id = node.get("id").getAsString();
+            }
+
+            String name = "";
+            if (node.has("name") && !node.get("name").isJsonNull()) {
+                name = node.get("name").getAsString();
+            }
+
+            int sort = 0;
+            if (node.has("sort") && !node.get("sort").isJsonNull()) {
+                sort = node.get("sort").getAsInt();
+            }
+
+            photoMetas.add(new JmPhotoMeta(
+                    StringUtils.defaultIfBlank(id, ""),
+                    StringUtils.defaultIfBlank(name, ""),
+                    sort
+            ));
+        }
+        return photoMetas;
     }
 
     /**
@@ -138,12 +229,26 @@ public final class ApiParser {
      */
     public static JmPhoto parsePhoto(String json, String scrambleId) {
         try {
-            JSONObject jsonObject = JSONObject.parseObject(json);
+            JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
 
-            String photoId = StringUtils.defaultIfBlank(jsonObject.getString("id"), "");
-            String name = StringUtils.defaultIfBlank(jsonObject.getString("name"), "");
-            String seriesId = StringUtils.defaultIfBlank(jsonObject.getString("series_id"), "");
-            JSONArray series = jsonObject.getJSONArray("series");
+            String photoId = "";
+            if (jsonObject.has("id") && !jsonObject.get("id").isJsonNull()) {
+                photoId = StringUtils.defaultIfBlank(jsonObject.get("id").getAsString(), "");
+            }
+
+            String name = "";
+            if (jsonObject.has("name") && !jsonObject.get("name").isJsonNull()) {
+                name = StringUtils.defaultIfBlank(jsonObject.get("name").getAsString(), "");
+            }
+
+            String seriesId = "";
+            if (jsonObject.has("series_id") && !jsonObject.get("series_id").isJsonNull()) {
+                seriesId = StringUtils.defaultIfBlank(jsonObject.get("series_id").getAsString(), "");
+            }
+
+            JsonArray series = jsonObject.has("series") && jsonObject.get("series").isJsonArray()
+                    ? jsonObject.getAsJsonArray("series")
+                    : null;
             boolean isSingleAlbum = false;
             if (series == null || series.isEmpty() || series.size() == 1) {
                 // 该章节就是一个本子
@@ -154,17 +259,24 @@ public final class ApiParser {
             }
 
             // API 返回的 tags 是一个空格分隔的字符串
-            String tagsString = jsonObject.getString("tags");
+            String tagsString = null;
+            if (jsonObject.has("tags") && !jsonObject.get("tags").isJsonNull()) {
+                tagsString = jsonObject.get("tags").getAsString();
+            }
             List<String> tags = StringUtils.isBlank(tagsString)
                     ? Collections.emptyList()
                     : List.of(tagsString.trim().split("\\s+"));
+
+            JsonArray imagesArray = jsonObject.has("images") && jsonObject.get("images").isJsonArray()
+                    ? jsonObject.getAsJsonArray("images")
+                    : new JsonArray();
 
             List<JmImage> images = buildImageList(
                     photoId,
                     scrambleId,
                     // 从默认域名列表中随机选择一个
                     JmConstants.DEFAULT_IMAGE_DOMAINS.get(RANDOM.nextInt(JmConstants.DEFAULT_IMAGE_DOMAINS.size())),
-                    jsonObject.getJSONArray("images")
+                    imagesArray
             );
 
             return new JmPhoto(
@@ -178,7 +290,7 @@ public final class ApiParser {
                     images,
                     isSingleAlbum
             );
-        } catch (JSONException e) {
+        } catch (Exception e) {
             throw new ParseResponseException("Failed to parse photo API JSON", e);
         }
     }
@@ -190,19 +302,21 @@ public final class ApiParser {
      * @param currentPhotoId 章节id
      * @return 章节在本子内的序号
      */
-    private static int parsePhotoSortOrder(JSONArray seriesArray, String currentPhotoId) {
+    private static int parsePhotoSortOrder(JsonArray seriesArray, String currentPhotoId) {
         if (seriesArray == null || seriesArray.isEmpty()) {
             return 1; // 默认值为1
         }
 
-        for (Object item : seriesArray) {
-            JSONObject node = (JSONObject) item;
+        for (JsonElement item : seriesArray) {
+            JsonObject node = item.getAsJsonObject();
 
             // 找到匹配的节点
-            if (Objects.equals(node.getString("id"), currentPhotoId)) {
+            if (node.has("id") && !node.get("id").isJsonNull() && Objects.equals(node.get("id").getAsString(), currentPhotoId)) {
                 // 获取 sort 值，如果不存在则返回 1
-                Integer sort = node.getInteger("sort");
-                return sort == null ? 1 : sort;
+                if (node.has("sort") && !node.get("sort").isJsonNull()) {
+                    return node.get("sort").getAsInt();
+                }
+                return 1;
             }
         }
 
@@ -219,15 +333,15 @@ public final class ApiParser {
      * @param imagesArray 图片文件名数组
      * @return 图片信息列表
      */
-    private static List<JmImage> buildImageList(String photoId, String scrambleId, String imageDomain, JSONArray imagesArray) {
+    private static List<JmImage> buildImageList(String photoId, String scrambleId, String imageDomain, JsonArray imagesArray) {
         if (imagesArray == null || imagesArray.isEmpty()) {
             return Collections.emptyList();
         }
 
         List<JmImage> images = new ArrayList<>();
         int sortOrder = 1;
-        for (Object item : imagesArray) {
-            String filename = (String) item;
+        for (JsonElement item : imagesArray) {
+            String filename = item.getAsString();
             String url = String.format("%s%s/media/photos/%s/%s", JmConstants.PROTOCOL_HTTPS, imageDomain, photoId, filename);
             images.add(new JmImage(
                     photoId,
@@ -250,10 +364,14 @@ public final class ApiParser {
      */
     public static JmSearchPage parseSearchPage(String jsonStr, int currentPage) {
         try {
-            JSONObject jsonObject = JSONObject.parseObject(jsonStr);
+            JsonObject jsonObject = JsonParser.parseString(jsonStr).getAsJsonObject();
 
             // API响应可能直接重定向到一个album，此时content为空
-            String redirectAid = jsonObject.getString("redirect_aid");
+            String redirectAid = null;
+            if (jsonObject.has("redirect_aid") && !jsonObject.get("redirect_aid").isJsonNull()) {
+                redirectAid = jsonObject.get("redirect_aid").getAsString();
+            }
+
             if (redirectAid != null && !redirectAid.isEmpty()) {
                 // 这是一个特殊情况，表示搜索结果只有一个且直接匹配了ID。
                 // 我们在这里无法获取完整的 Album 信息，所以返回一个只包含ID的列表，
@@ -262,15 +380,22 @@ public final class ApiParser {
                 return new JmSearchPage(1, 1, 1, List.of(meta));
             }
 
-            int totalItems = jsonObject.getIntValue("total", 0);
+            int totalItems = 0;
+            if (jsonObject.has("total") && !jsonObject.get("total").isJsonNull()) {
+                totalItems = jsonObject.get("total").getAsInt();
+            }
+
             int totalPages = (totalItems == 0)
                     ? 0
                     : (int) Math.ceil((double) totalItems / JmConstants.PAGE_SIZE_SEARCH);
 
-            List<JmAlbumMeta> content = parseAlbumMetaList(jsonObject.getJSONArray("content"));
+            JsonArray contentArray = jsonObject.has("content") && jsonObject.get("content").isJsonArray()
+                    ? jsonObject.getAsJsonArray("content")
+                    : new JsonArray();
+            List<JmAlbumMeta> content = parseAlbumMetaList(contentArray);
 
             return new JmSearchPage(currentPage, totalItems, totalPages, content);
-        } catch (JSONException e) {
+        } catch (Exception e) {
             throw new ParseResponseException("Failed to parse search API JSON", e);
         }
     }
@@ -284,25 +409,37 @@ public final class ApiParser {
      */
     public static JmFavoritePage parseFavoritePage(String jsonStr, int currentPage) {
         try {
-            JSONObject jsonObject = JSONObject.parseObject(jsonStr);
+            JsonObject jsonObject = JsonParser.parseString(jsonStr).getAsJsonObject();
 
-            int totalItems = jsonObject.getIntValue("total", 0);
+            int totalItems = 0;
+            if (jsonObject.has("total") && !jsonObject.get("total").isJsonNull()) {
+                totalItems = jsonObject.get("total").getAsInt();
+            }
             final int pageSize = JmConstants.PAGE_SIZE_FAVORITE;
             int totalPages = (totalItems == 0)
                     ? 0
                     : (int) Math.ceil((double) totalItems / pageSize);
 
-            JSONArray folderArray = jsonObject.getJSONArray("folder_list");
+            JsonArray folderArray = jsonObject.has("folder_list") && jsonObject.get("folder_list").isJsonArray()
+                    ? jsonObject.getAsJsonArray("folder_list")
+                    : null;
             Map<String, String> folderList;
             if (folderArray == null || folderArray.isEmpty()) {
                 folderList = Collections.emptyMap();
             } else {
                 folderList = new HashMap<>();
-                for (Object item : folderArray) {
-                    JSONObject node = (JSONObject) item;
+                for (JsonElement item : folderArray) {
+                    JsonObject node = item.getAsJsonObject();
 
-                    String fid = StringUtils.defaultIfBlank(node.getString("FID"), "");
-                    String name = StringUtils.defaultIfBlank(node.getString("name"), "");
+                    String fid = "";
+                    if (node.has("FID") && !node.get("FID").isJsonNull()) {
+                        fid = StringUtils.defaultIfBlank(node.get("FID").getAsString(), "");
+                    }
+
+                    String name = "";
+                    if (node.has("name") && !node.get("name").isJsonNull()) {
+                        name = StringUtils.defaultIfBlank(node.get("name").getAsString(), "");
+                    }
 
                     // 如果 fid 有效，则尝试放入 map
                     if (!fid.isEmpty()) {
@@ -311,10 +448,13 @@ public final class ApiParser {
                 }
             }
 
-            List<JmAlbumMeta> content = parseAlbumMetaList(jsonObject.getJSONArray("list"));
+            JsonArray listArray = jsonObject.has("list") && jsonObject.get("list").isJsonArray()
+                    ? jsonObject.getAsJsonArray("list")
+                    : new JsonArray();
+            List<JmAlbumMeta> content = parseAlbumMetaList(listArray);
 
             return new JmFavoritePage(currentPage, totalPages, content, folderList);
-        } catch (JSONException e) {
+        } catch (Exception e) {
             throw new ParseResponseException("Failed to parse favorite API JSON", e);
         }
     }
@@ -324,28 +464,41 @@ public final class ApiParser {
      *
      * @param array 本子摘要信息数组
      */
-    private static List<JmAlbumMeta> parseAlbumMetaList(JSONArray array) {
+    private static List<JmAlbumMeta> parseAlbumMetaList(JsonArray array) {
         if (array == null || array.isEmpty()) {
             return Collections.emptyList();
         }
 
         List<JmAlbumMeta> resultList = new ArrayList<>();
-        for (Object item : array) {
-            JSONObject node = (JSONObject) item;
+        for (JsonElement item : array) {
+            JsonObject node = item.getAsJsonObject();
             List<String> authors = new ArrayList<>();
-            Object authorObj = node.get("author");
-            // API返回的 author 可能是字符串或数组，这里做兼容处理
-            if (authorObj instanceof String) {
-                authors.add((String) authorObj);
-            } else if (authorObj instanceof JSONArray authorArray) {
-                for (Object authorItem : authorArray) {
-                    authors.add(authorItem.toString());
+
+            if (node.has("author") && !node.get("author").isJsonNull()) {
+                JsonElement authorElement = node.get("author");
+                // API返回的 author 可能是字符串或数组，这里做兼容处理
+                if (authorElement.isJsonPrimitive() && authorElement.getAsJsonPrimitive().isString()) {
+                    authors.add(authorElement.getAsString());
+                } else if (authorElement.isJsonArray()) {
+                    for (JsonElement authorItem : authorElement.getAsJsonArray()) {
+                        authors.add(authorItem.getAsString());
+                    }
                 }
             }
 
+            String id = "";
+            if (node.has("id") && !node.get("id").isJsonNull()) {
+                id = node.get("id").getAsString();
+            }
+
+            String name = "";
+            if (node.has("name") && !node.get("name").isJsonNull()) {
+                name = node.get("name").getAsString();
+            }
+
             JmAlbumMeta meta = new JmAlbumMeta(
-                    StringUtils.defaultIfBlank(node.getString("id"), ""),
-                    StringUtils.defaultIfBlank(node.getString("name"), ""),
+                    StringUtils.defaultIfBlank(id, ""),
+                    StringUtils.defaultIfBlank(name, ""),
                     authors,
                     Collections.emptyList()
             );
@@ -362,16 +515,22 @@ public final class ApiParser {
      */
     public static List<String> parseDomainsFromDomainServer(String jsonStr) {
         try {
-            JSONObject root = JSONObject.parseObject(jsonStr);
-            JSONArray serverArray = root.getJSONArray("Server");
+            JsonObject root = JsonParser.parseString(jsonStr).getAsJsonObject();
+            JsonArray serverArray = root.has("Server") && root.get("Server").isJsonArray()
+                    ? root.getAsJsonArray("Server")
+                    : null;
 
             if (serverArray == null || serverArray.isEmpty()) {
                 return Collections.emptyList();
             }
 
-            return serverArray.toJavaList(String.class);
+            List<String> resultList = new ArrayList<>();
+            for (JsonElement item : serverArray) {
+                resultList.add(item.getAsString());
+            }
+            return resultList;
 
-        } catch (JSONException e) {
+        } catch (Exception e) {
             throw new ParseResponseException("Failed to parse domain server response JSON", e);
         }
     }

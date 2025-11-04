@@ -1,7 +1,7 @@
 package io.github.jukomu.jmcomic.core.net;
 
-import io.github.jukomu.jmcomic.api.config.JmConfiguration;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
+import io.github.jukomu.jmcomic.core.config.JmConfiguration;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
 import io.github.jukomu.jmcomic.core.net.interceptor.RetryAndDomainRedirectInterceptor;
 import io.github.jukomu.jmcomic.core.net.interceptor.UserAgentInterceptor;

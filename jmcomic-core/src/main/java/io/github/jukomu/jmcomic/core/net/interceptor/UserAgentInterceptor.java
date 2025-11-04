@@ -1,7 +1,7 @@
 package io.github.jukomu.jmcomic.core.net.interceptor;
 
-import io.github.jukomu.jmcomic.api.config.JmConfiguration;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
+import io.github.jukomu.jmcomic.core.config.JmConfiguration;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
 import okhttp3.Interceptor;
 import okhttp3.Request;

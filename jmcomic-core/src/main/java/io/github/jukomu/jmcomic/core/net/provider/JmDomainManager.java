@@ -75,8 +75,7 @@ public final class JmDomainManager {
     }
 
     /**
-     * 动态更新域名列表。
-     * 新的域名将被添加，旧的但不在新列表中的域名将被保留但可能不再被优先选择。
+     * 更新域名列表。
      *
      * @param newDomains 最新的域名列表。
      */
@@ -86,5 +85,9 @@ public final class JmDomainManager {
         domains.addAll(newDomains);
         failureCounts.clear();
         domains.forEach(domain -> failureCounts.putIfAbsent(domain, new AtomicInteger(0)));
+    }
+
+    public CopyOnWriteArrayList<String> getDomains() {
+        return domains;
     }
 }

@@ -1,6 +1,8 @@
-package io.github.jukomu.jmcomic.api.config;
+package io.github.jukomu.jmcomic.core.config;
 
 import io.github.jukomu.jmcomic.api.enums.ClientType;
+import io.github.jukomu.jmcomic.core.cache.CacheKey;
+import io.github.jukomu.jmcomic.core.cache.CachePool;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,7 +40,7 @@ public final class JmConfiguration {
     // 线程池大小
     private final int downloadThreadPoolSize;
     // 缓存大小, 单位: Byte
-    private final int cacheSize;
+    private final CachePool<CacheKey, Object> cachePool;
     // 同时下载的章节数
     private final int concurrentPhotoDownloads;
     // 同时下载的图片数
@@ -54,7 +56,7 @@ public final class JmConfiguration {
         this.retryTimes = builder.retryTimes;
         this.executor = builder.executor;
         this.downloadThreadPoolSize = builder.downloadThreadPoolSize;
-        this.cacheSize = builder.cacheSize;
+        this.cachePool = new CachePool<>(builder.cacheSize);
         this.concurrentPhotoDownloads = builder.concurrentPhotoDownloads;
         this.concurrentImageDownloads = builder.concurrentImageDownloads;
     }
@@ -96,8 +98,8 @@ public final class JmConfiguration {
         return downloadThreadPoolSize;
     }
 
-    public int getCacheSize() {
-        return cacheSize;
+    public CachePool<CacheKey, Object> getCachePool() {
+        return cachePool;
     }
 
     public int getConcurrentPhotoDownloads() {

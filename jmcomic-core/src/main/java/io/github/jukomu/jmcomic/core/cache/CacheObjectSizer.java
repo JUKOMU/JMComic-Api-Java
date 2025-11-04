@@ -1,7 +1,6 @@
 package io.github.jukomu.jmcomic.core.cache;
 
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONException;
+import io.github.jukomu.jmcomic.core.util.JsonUtils;
 
 import java.nio.charset.StandardCharsets;
 
@@ -17,8 +16,8 @@ public class CacheObjectSizer {
             return 0;
         }
         try {
-            return JSON.toJSONString(value).getBytes(StandardCharsets.UTF_8).length;
-        } catch (JSONException e) {
+            return JsonUtils.getGson().toJson(value).getBytes(StandardCharsets.UTF_8).length;
+        } catch (Exception e) {
             // 序列化失败时返回一个默认的小尺寸
             return 1;
         }
