@@ -111,12 +111,12 @@ changes in future versions.
 package io.github.jukomu.jmcomic.sample.downloader;
 
 import io.github.jukomu.jmcomic.api.client.DownloadResult;
-import io.github.jukomu.jmcomic.api.client.JmClient;
-import io.github.jukomu.jmcomic.api.config.JmConfiguration;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
 import io.github.jukomu.jmcomic.api.model.JmAlbum;
 import io.github.jukomu.jmcomic.api.model.JmPhoto;
 import io.github.jukomu.jmcomic.core.JmComic;
+import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
+import io.github.jukomu.jmcomic.core.config.JmConfiguration;
 
 /**
  * @author JUKOMU
@@ -125,14 +125,14 @@ import io.github.jukomu.jmcomic.core.JmComic;
  * @Date: 2025/11/2
  */
 public class DownloaderSample {
-    private static JmClient client;
+    private static AbstractJmClient client;
 
     public static void main(String[] args) {
         // 配置 JmClient
         JmConfiguration config = new JmConfiguration.Builder()
                 .clientType(ClientType.API) // 使用API客户端
                 .build();
-        client = JmComic.newClient(config);
+        client = JmComic.newApiClient(config);
         // 下载含多个章节的本子
         downloadAlbumWithAllPhotos("1064000");
         // 下载只有一个章节的本子
@@ -222,21 +222,17 @@ client.downloadAlbum(album, generator);
 // 创建并管理你自己的线程池
 ExecutorService myExecutor = Executors.newFixedThreadPool(16);
 
-try(
-JmClient client = JmComic.newClient(config)){
-// ...
-// 将线程池注入到下载方法中
-DownloadResult result = client.downloadAlbum(album, pathGenerator, myExecutor);
-// ...
-}finally{
-        // 退出时关闭线程池
-        myExecutor.
-
-shutdown();
-    myExecutor.
-
-awaitTermination(1,TimeUnit.MINUTES);
+try (AbstractJmClient client = JmComic.newApiClient(config)) {
+    // ...
+    // 将线程池注入到下载方法中
+    DownloadResult result = client.downloadAlbum(album, pathGenerator, myExecutor);
+    // ...
+} finally {
+    // 在应用退出时，由您自己负责关闭线程池
+    myExecutor.shutdown();
+    myExecutor.awaitTermination(1, TimeUnit.MINUTES);
 }
+
 ```
 
 ---

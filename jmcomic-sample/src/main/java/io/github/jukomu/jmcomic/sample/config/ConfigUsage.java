@@ -1,9 +1,10 @@
 package io.github.jukomu.jmcomic.sample.config;
 
-import io.github.jukomu.jmcomic.api.client.JmClient;
-import io.github.jukomu.jmcomic.api.config.JmConfiguration;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
 import io.github.jukomu.jmcomic.core.JmComic;
+import io.github.jukomu.jmcomic.core.client.impl.JmApiClient;
+import io.github.jukomu.jmcomic.core.client.impl.JmHtmlClient;
+import io.github.jukomu.jmcomic.core.config.JmConfiguration;
 
 import java.time.Duration;
 
@@ -15,8 +16,10 @@ import java.time.Duration;
  */
 public class ConfigUsage {
     public static void main(String[] args) {
-        JmClient client1 = JmComic.newClient(getSimpleConfigUsage());
-        JmClient client2 = JmComic.newClient(getAdvancedConfigUsage());
+        JmApiClient client1 = JmComic.newApiClient(getSimpleConfigUsage());
+        JmHtmlClient client2 = JmComic.newHtmlClient(getAdvancedConfigUsage());
+        client1.getClientType();
+        client2.getClientType();
     }
 
     private static JmConfiguration getSimpleConfigUsage() {
@@ -33,7 +36,7 @@ public class ConfigUsage {
                 .timeout(Duration.ofSeconds(60)) // 设置网络超时为60秒
                 .retryTimes(10) // 设置最大重试次数
                 .downloadThreadPoolSize(12) // 设置下载线程池大小
-                .cacheSize(100*1024*1024) // 设置缓存池大小,单位: Byte
+                .cacheSize(100 * 1024 * 1024) // 设置缓存池大小,单位: Byte
                 .concurrentPhotoDownloads(2) // 设置同时下载的章节数
                 .concurrentImageDownloads(15) // 设置同时下载的图片数
                 .build();
