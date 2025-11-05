@@ -9,10 +9,10 @@ package io.github.jukomu.jmcomic.api.exception;
 public class AlbumNotFoundException extends ResourceNotFoundException {
 
     public AlbumNotFoundException(String albumId) {
-        super(String.format("Album with ID '%s' was not found.", albumId), albumId);
+        super(String.format("请求的本子'%s'不存在", albumId), albumId);
     }
 
     public AlbumNotFoundException(String albumId, Throwable cause) {
-        super(String.format("Album with ID '%s' was not found.", albumId), albumId, cause);
+        super(String.format("请求的本子'%s'不存在", albumId), albumId, cause);
     }
 }

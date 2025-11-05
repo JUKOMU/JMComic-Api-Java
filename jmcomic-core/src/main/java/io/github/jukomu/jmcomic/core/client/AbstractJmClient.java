@@ -275,7 +275,7 @@ public abstract class AbstractJmClient implements JmClient {
         try {
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         } catch (CompletionException e) {
-            logger.warn("下载章节 '{}' 时部分图片下载失败，但这不会中断整体下载流程。", photo.getTitle());
+            logger.warn("下载章节 '{}' 时部分图片下载失败。", photo.getTitle());
         }
 
         for (CompletableFuture<Path> future : futures) {
@@ -342,7 +342,7 @@ public abstract class AbstractJmClient implements JmClient {
         try {
             CompletableFuture.allOf(photoFutures.toArray(new CompletableFuture[0])).join();
         } catch (CompletionException e) {
-            logger.warn("下载本子 '{}' 时部分章节下载失败，但这不会中断整体下载流程。", album.getTitle());
+            logger.warn("下载本子 '{}' 时部分章节下载失败。", album.getTitle());
         }
         List<Path> allSuccessfulFiles = Collections.synchronizedList(new ArrayList<>());
         ConcurrentHashMap<JmImage, Exception> allFailedTasks = new ConcurrentHashMap<>();

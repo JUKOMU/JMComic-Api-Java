@@ -3,9 +3,7 @@ package io.github.jukomu.jmcomic.core.client.impl;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.jukomu.jmcomic.api.enums.Category;
-import io.github.jukomu.jmcomic.api.exception.ApiResponseException;
-import io.github.jukomu.jmcomic.api.exception.NetworkException;
-import io.github.jukomu.jmcomic.api.exception.ParseResponseException;
+import io.github.jukomu.jmcomic.api.exception.*;
 import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
 import io.github.jukomu.jmcomic.core.config.JmConfiguration;
@@ -83,7 +81,7 @@ public final class JmHtmlClient extends AbstractJmClient {
     // == 核心数据获取层实现 ==
 
     @Override
-    public JmAlbum getAlbum(String albumId) {
+    public JmAlbum getAlbum(String albumId) throws AlbumNotFoundException {
         JmAlbum cachedJmAlbum = getCachedJmAlbum(albumId);
         if (cachedJmAlbum != null) {
             return cachedJmAlbum;
@@ -92,8 +90,12 @@ public final class JmHtmlClient extends AbstractJmClient {
                 .addPathSegment("album")
                 .addPathSegment(albumId)
                 .build();
-
-        JmHtmlResponse jmHtmlResponse = executeGetRequest(url);
+        JmHtmlResponse jmHtmlResponse;
+        try {
+            jmHtmlResponse = executeGetRequest(url);
+        } catch (ResourceNotFoundException e) {
+            throw new AlbumNotFoundException(albumId, e);
+        }
         JmAlbum jmAlbum = HtmlParser.parseAlbum(jmHtmlResponse.getHtml());
         cacheJmAlbum(jmAlbum);
         return jmAlbum;
@@ -101,7 +103,7 @@ public final class JmHtmlClient extends AbstractJmClient {
     }
 
     @Override
-    public JmPhoto getPhoto(String photoId) {
+    public JmPhoto getPhoto(String photoId) throws PhotoNotFoundException {
         JmPhoto cachedJmPhoto = getCachedJmPhoto(photoId);
         if (cachedJmPhoto != null) {
             return cachedJmPhoto;
@@ -110,8 +112,12 @@ public final class JmHtmlClient extends AbstractJmClient {
                 .addPathSegment("photo")
                 .addPathSegment(photoId)
                 .build();
-
-        JmHtmlResponse jmHtmlResponse = executeGetRequest(url);
+        JmHtmlResponse jmHtmlResponse;
+        try {
+            jmHtmlResponse = executeGetRequest(url);
+        } catch (ResourceNotFoundException e) {
+            throw new PhotoNotFoundException(photoId, e);
+        }
         JmPhoto jmPhoto = HtmlParser.parsePhoto(jmHtmlResponse.getHtml());
         cacheJmPhoto(jmPhoto);
         return jmPhoto;

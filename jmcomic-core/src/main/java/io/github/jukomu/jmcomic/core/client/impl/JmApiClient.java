@@ -3,8 +3,7 @@ package io.github.jukomu.jmcomic.core.client.impl;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.jukomu.jmcomic.api.enums.TimeOption;
-import io.github.jukomu.jmcomic.api.exception.ApiResponseException;
-import io.github.jukomu.jmcomic.api.exception.ParseResponseException;
+import io.github.jukomu.jmcomic.api.exception.*;
 import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
 import io.github.jukomu.jmcomic.core.config.JmConfiguration;
@@ -83,7 +82,7 @@ public final class JmApiClient extends AbstractJmClient {
     // == 核心数据获取层实现 ==
 
     @Override
-    public JmAlbum getAlbum(String albumId) {
+    public JmAlbum getAlbum(String albumId) throws AlbumNotFoundException {
         JmAlbum cachedJmAlbum = getCachedJmAlbum(albumId);
         if (cachedJmAlbum != null) {
             return cachedJmAlbum;
@@ -93,15 +92,19 @@ public final class JmApiClient extends AbstractJmClient {
                 .addPathSegment("album")
                 .addQueryParameter("id", albumId)
                 .build();
-
-        JmApiResponse jmApiResponse = executeGetRequest(url, JmConstants.APP_TOKEN_SECRET);
+        JmApiResponse jmApiResponse;
+        try {
+            jmApiResponse = executeGetRequest(url, JmConstants.APP_TOKEN_SECRET);
+        } catch (ResourceNotFoundException e) {
+            throw new AlbumNotFoundException(albumId, e);
+        }
         JmAlbum jmAlbum = ApiParser.parseAlbum(jmApiResponse.getDecodedData());
         cacheJmAlbum(jmAlbum);
         return jmAlbum;
     }
 
     @Override
-    public JmPhoto getPhoto(String photoId) {
+    public JmPhoto getPhoto(String photoId) throws PhotoNotFoundException {
         JmPhoto cachedJmPhoto = getCachedJmPhoto(photoId);
         if (cachedJmPhoto != null) {
             return cachedJmPhoto;
@@ -112,10 +115,13 @@ public final class JmApiClient extends AbstractJmClient {
                 .addQueryParameter("id", photoId)
                 .build();
         String photoJson;
-        JmApiResponse response = executeGetRequest(photoUrl, JmConstants.APP_TOKEN_SECRET);
+        JmApiResponse response;
+        try {
+            response = executeGetRequest(photoUrl, JmConstants.APP_TOKEN_SECRET);
+        } catch (ResourceNotFoundException e) {
+            throw new PhotoNotFoundException(photoId, e);
+        }
         photoJson = response.getDecodedData();
-
-
         // 获取 scramble_id 的网页端点
         HttpUrl scrambleUrl = newHttpUrlBuilder()
                 .addPathSegment("chapter_view_template")

@@ -9,10 +9,10 @@ package io.github.jukomu.jmcomic.api.exception;
 public class PhotoNotFoundException extends ResourceNotFoundException {
 
     public PhotoNotFoundException(String photoId) {
-        super(String.format("Photo with ID '%s' was not found.", photoId), photoId);
+        super(String.format("请求的章节'%s'不存在", photoId), photoId);
     }
 
     public PhotoNotFoundException(String photoId, Throwable cause) {
-        super(String.format("Photo with ID '%s' was not found.", photoId), photoId, cause);
+        super(String.format("请求的章节'%s'不存在", photoId), photoId, cause);
     }
 }

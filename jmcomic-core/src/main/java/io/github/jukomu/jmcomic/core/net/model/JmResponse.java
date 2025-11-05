@@ -1,7 +1,7 @@
 package io.github.jukomu.jmcomic.core.net.model;
 
-import io.github.jukomu.jmcomic.api.exception.AlbumNotFoundException;
 import io.github.jukomu.jmcomic.api.exception.ApiResponseException;
+import io.github.jukomu.jmcomic.api.exception.ResourceNotFoundException;
 import okhttp3.Response;
 
 /**
@@ -62,11 +62,11 @@ public class JmResponse extends CommonResponse {
                 return;
             }
             if (redirectUrl.endsWith("/error/album_missing") && !originUrl.endsWith("/error/album_missing")) {
-                throw new AlbumNotFoundException("请求的本子不存在");
+                throw new ResourceNotFoundException("请求的资源不存在", originUrl);
             } else if (redirectUrl.endsWith("/error/user_missing") && !originUrl.endsWith("/error/user_missing")) {
-                throw new ApiResponseException("此用戶名稱不存在，或者你没有登录，請再次確認使用名稱");
+                throw new ApiResponseException("此用户名称不存在，或者你没有登录，请再次确认使用名称");
             } else if (redirectUrl.endsWith("/error/invalid_module") && !originUrl.endsWith("/error/invalid_module")) {
-                throw new ApiResponseException("發生了無法預期的錯誤。若問題持續發生，請聯繫客服支援");
+                throw new ApiResponseException("发生了无法预期的错误。若问题持续发生，请联系客服支持");
             }
         }
     }
