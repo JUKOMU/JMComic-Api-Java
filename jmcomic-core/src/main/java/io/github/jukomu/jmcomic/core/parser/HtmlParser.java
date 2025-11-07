@@ -435,7 +435,6 @@ public final class HtmlParser {
     public static JmFavoritePage parseFavoritePage(String html, int currentPage) {
         Document doc = Jsoup.parse(html);
 
-        // 总页数逻辑与搜索页类似，但不完全相同
         int totalItems = parseFavoriteTotalItems(doc);
         int totalPages = (totalItems == 0) ? 0 : (int) Math.ceil((double) totalItems / JmConstants.PAGE_SIZE_FAVORITE);
 
@@ -445,22 +444,28 @@ public final class HtmlParser {
                 .collect(Collectors.toMap(
                         option -> option.attr("value"),
                         Element::text,
-                        (oldValue, newValue) -> oldValue // in case of duplicate keys
+                        (oldValue, newValue) -> oldValue
                 ));
+        folderList.put("0", "全部");
 
         // 解析当前页的收藏内容
-        List<JmAlbumMeta> content = doc.select("div.col-lg-3.col-md-4.col-sm-6.thumb-overlay-albums")
-                .stream()
-                .map(HtmlParser::parseFavoriteCard)
-                .collect(Collectors.toList());
+        List<JmAlbumMeta> content = parseFavoriteCard(doc);
 
-        return new JmFavoritePage(currentPage, totalPages, content, folderList);
+        // 解析当前所在收藏夹的名称和ID
+        String[] nameAndId = parseFavoriteFolderNameAndId(doc);
+
+        return new JmFavoritePage(nameAndId[0], Integer.parseInt(nameAndId[1]), currentPage, totalItems, totalPages, content, folderList);
     }
 
     private static int parseFavoriteTotalItems(Document doc) {
-        Element totalElement = doc.selectFirst("h5:contains(共)");
+        Element totalElement = doc.selectFirst("div.container " +
+                "> div.row " +
+                "> div.col-md-6 " +
+                "> div.panel " +
+                "> div.panel-heading " +
+                "> div.pull-left").nextElementSibling();
         if (totalElement != null) {
-            Matcher matcher = Pattern.compile("共\\s*(\\d+)\\s*本").matcher(totalElement.text());
+            Matcher matcher = Pattern.compile(":\\s*(\\d+)/").matcher(totalElement.text().replaceAll("\\s", ""));
             if (matcher.find()) {
                 return Integer.parseInt(matcher.group(1));
             }
@@ -468,12 +473,55 @@ public final class HtmlParser {
         return 0;
     }
 
-    private static JmAlbumMeta parseFavoriteCard(Element card) {
-        Element link = card.selectFirst("a");
-        String id = extractIdFromUrl(link.attr("href"));
-        String title = card.selectFirst("div.video-title").text();
-        // 收藏夹卡片中没有直接显示作者和tag，返回空列表
-        return new JmAlbumMeta(id, title, List.of(), List.of());
+    private static List<JmAlbumMeta> parseFavoriteCard(Document doc) {
+        Element panelBodyElement = doc.selectFirst("div.container " +
+                "> div.row " +
+                "> div.col-md-6 " +
+                "> div.panel " +
+                "> div.panel-body ");
+
+        List<JmAlbumMeta> albumList = new ArrayList<>();
+
+        Elements albumDivs = panelBodyElement.select("div[id^=favorites_album_]");
+
+        for (Element albumDiv : albumDivs) {
+            String fullId = albumDiv.id();
+            String albumId = fullId.replace("favorites_album_", "");
+
+            // 提取 Title
+            String title = "";
+            Element titleElement = albumDiv.selectFirst(".video-title");
+
+            if (titleElement != null) {
+                title = titleElement.text().trim();
+            }
+            albumList.add(new JmAlbumMeta(albumId, title, null, null));
+        }
+
+        return albumList;
+    }
+
+    private static String[] parseFavoriteFolderNameAndId(Document doc) {
+        Element activeLi = doc.selectFirst("div#folder_list li.active");
+        String name = activeLi.text().trim();
+        Element parentA = activeLi.parent();
+        String id;
+        if (parentA != null && parentA.tagName().equals("a")) {
+            String href = parentA.attr("href");
+            if (href != null && href.contains("folder=")) {
+                try {
+                    id = href.split("folder=")[1];
+                } catch (ArrayIndexOutOfBoundsException e) {
+                    // 异常处理：防止 URL 是 "...?folder=" 这种没有值的情况
+                    id = "0";
+                }
+            } else {
+                id = "0";
+            }
+        } else {
+            id = "0";
+        }
+        return new String[]{name, id};
     }
 
     /**
@@ -488,7 +536,8 @@ public final class HtmlParser {
         while (matcher.find()) {
             String domain = matcher.group(0);
             boolean containsKeyword = Stream.of("jm", "comic").anyMatch(domain::contains);
-            if (containsKeyword) {
+            boolean containsKeyword2 = Stream.of("/").anyMatch(domain::contains);
+            if (containsKeyword && !containsKeyword2) {
                 domainList.add(domain);
             }
         }

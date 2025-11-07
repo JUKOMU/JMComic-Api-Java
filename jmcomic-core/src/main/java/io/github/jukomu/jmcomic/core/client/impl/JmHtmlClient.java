@@ -45,7 +45,7 @@ public final class JmHtmlClient extends AbstractJmClient {
     @Override
     protected void updateDomains() {
         logger.info("开始获取最新域名列表");
-        String oldDomains = domainManager.toString();
+        String oldDomains = domainManager.getDomains().toString();
 
         // 尝试第一种方法：从JmPub页面获取
         try {
@@ -179,23 +179,27 @@ public final class JmHtmlClient extends AbstractJmClient {
     }
 
     @Override
-    public JmFavoritePage getFavorites(int page) {
-        JmFavoritePage cachedJmFavoritePage = getCachedJmFavoritePage(page);
+    public JmFavoritePage getFavorites(FavoriteQuery query) {
+        JmFavoritePage cachedJmFavoritePage = getCachedJmFavoritePage(query);
         if (cachedJmFavoritePage != null) {
             return cachedJmFavoritePage;
         }
+        int folderId = query.getFolderId();
+        int page = query.getPage();
         String username = getLoggedInUserName();
 
-        HttpUrl url = newHttpUrlBuilder()
+        HttpUrl.Builder url = newHttpUrlBuilder()
                 .addPathSegment("user")
                 .addPathSegment(username)
                 .addPathSegment("favorite")
                 .addPathSegment("albums")
-                .addQueryParameter("page", String.valueOf(page))
-                .build();
+                .addQueryParameter("page", String.valueOf(page));
+        if (folderId != 0) {
+            url.addQueryParameter("folder", String.valueOf(folderId));
+        }
 
         try {
-            JmHtmlResponse jmHtmlResponse = executeGetRequest(url);
+            JmHtmlResponse jmHtmlResponse = executeGetRequest(url.build());
             JmFavoritePage jmFavoritePage = HtmlParser.parseFavoritePage(jmHtmlResponse.getHtml(), page);
             cacheJmFavoritePage(jmFavoritePage);
             return jmFavoritePage;
@@ -226,6 +230,7 @@ public final class JmHtmlClient extends AbstractJmClient {
         try {
             JmHtmlResponse jmHtmlResponse = executePostRequest(url, formBody, false);
             super.cacheUsername(username);
+            // TODO 获取用户信息
             return JmUserInfo.partial(username);
         } catch (ApiResponseException e) {
             throw new ApiResponseException("Login failed: " + e.getMessage());
@@ -419,7 +424,7 @@ public final class JmHtmlClient extends AbstractJmClient {
      */
     public List<String> getHtmlDomainAll() {
         try {
-            JmHtmlResponse jmHtmlResponse = executeGetRequest(HttpUrl.parse(JmConstants.JM_REDIRECT_URL));
+            JmHtmlResponse jmHtmlResponse = executeGetRequest(HttpUrl.parse(JmConstants.JM_PUB_URL));
             return HtmlParser.parseJmPubHtml(jmHtmlResponse.getHtml());
         } catch (ApiResponseException e) {
             throw new ApiResponseException("Failed to get html domains: " + e.getMessage());
@@ -434,12 +439,12 @@ public final class JmHtmlClient extends AbstractJmClient {
      * @return 禁漫网页域名Set。
      */
     public List<String> getHtmlDomainAllViaGithub() {
-        String template = "https://jmcmomic.github.io/go/{}.html";
+        String template = "https://jmcmomic.github.io/go/";
         int[] indexRange = new int[]{300, 309};
         Set<String> domainSet = ConcurrentHashMap.newKeySet();
         List<String> urlsToFetch = new ArrayList<>();
         for (int i = indexRange[0]; i <= indexRange[1]; i++) {
-            urlsToFetch.add(String.format(template, i));
+            urlsToFetch.add(template + String.valueOf(i) + ".html");
         }
 
         int poolSize = Math.min(urlsToFetch.size(), Runtime.getRuntime().availableProcessors() * 2);

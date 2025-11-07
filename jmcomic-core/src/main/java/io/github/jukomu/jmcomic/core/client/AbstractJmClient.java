@@ -448,8 +448,10 @@ public abstract class AbstractJmClient implements JmClient {
      *
      * @return 收藏夹详情
      */
-    protected JmFavoritePage getCachedJmFavoritePage(int page) {
-        return (JmFavoritePage) cachePool.get(CacheKey.of(JmFavoritePage.class, String.valueOf(page)));
+    protected JmFavoritePage getCachedJmFavoritePage(FavoriteQuery query) {
+        int folderId = query.getFolderId();
+        int page = query.getPage();
+        return (JmFavoritePage) cachePool.get(CacheKey.of(JmFavoritePage.class, folderId + "/" + page));
     }
 
     /**
@@ -476,7 +478,9 @@ public abstract class AbstractJmClient implements JmClient {
      * @param favoritePage 收藏夹详情
      */
     protected void cacheJmFavoritePage(JmFavoritePage favoritePage) {
-        cachePool.put(CacheKey.of(JmFavoritePage.class, String.valueOf(favoritePage.getCurrentPage())), favoritePage);
+        int folderId = favoritePage.getFolderId();
+        int currentPage = favoritePage.getCurrentPage();
+        cachePool.put(CacheKey.of(JmFavoritePage.class, folderId + "/" + currentPage), favoritePage);
     }
 
     // == 资源管理实现 ==

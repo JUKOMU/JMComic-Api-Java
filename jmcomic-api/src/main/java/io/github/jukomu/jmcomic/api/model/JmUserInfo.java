@@ -11,7 +11,7 @@ public record JmUserInfo(
         String username,
         String email,
         boolean emailVerified,
-        String photoUrl,
+        String avatarUrl,
         String firstName,
         String gender,
         String message,
@@ -77,7 +77,7 @@ public record JmUserInfo(
      * @return 头像URL
      */
     public String getPhotoUrl() {
-        return photoUrl;
+        return avatarUrl;
     }
 
     /**

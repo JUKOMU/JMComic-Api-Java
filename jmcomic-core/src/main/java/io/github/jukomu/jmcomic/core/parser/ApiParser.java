@@ -403,11 +403,11 @@ public final class ApiParser {
     /**
      * 解析用户收藏夹页面 (Favorite Page) 的API JSON响应。
      *
-     * @param jsonStr     API返回的JSON字符串。
-     * @param currentPage 当前页码。
+     * @param jsonStr API返回的JSON字符串。
+     * @param query   收藏夹参数
      * @return 一个 JmFavoritePage 对象。
      */
-    public static JmFavoritePage parseFavoritePage(String jsonStr, int currentPage) {
+    public static JmFavoritePage parseFavoritePage(String jsonStr, FavoriteQuery query) {
         try {
             JsonObject jsonObject = JsonParser.parseString(jsonStr).getAsJsonObject();
 
@@ -425,9 +425,11 @@ public final class ApiParser {
                     : null;
             Map<String, String> folderList;
             if (folderArray == null || folderArray.isEmpty()) {
-                folderList = Collections.emptyMap();
+                folderList = new HashMap<>();
+                folderList.putIfAbsent("0", "全部");
             } else {
                 folderList = new HashMap<>();
+                folderList.putIfAbsent("0", "全部");
                 for (JsonElement item : folderArray) {
                     JsonObject node = item.getAsJsonObject();
 
@@ -453,7 +455,7 @@ public final class ApiParser {
                     : new JsonArray();
             List<JmAlbumMeta> content = parseAlbumMetaList(listArray);
 
-            return new JmFavoritePage(currentPage, totalPages, content, folderList);
+            return new JmFavoritePage(folderList.get(String.valueOf(query.getFolderId())), query.getFolderId(), query.getPage(), totalItems, totalPages, content, folderList);
         } catch (Exception e) {
             throw new ParseResponseException("Failed to parse favorite API JSON", e);
         }

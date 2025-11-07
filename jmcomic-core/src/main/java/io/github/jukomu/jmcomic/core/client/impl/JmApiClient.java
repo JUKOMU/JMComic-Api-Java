@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import java.net.CookieManager;
 import java.time.Instant;
 import java.util.List;
+import java.util.Random;
 
 /**
  * @author JUKOMU
@@ -162,19 +163,23 @@ public final class JmApiClient extends AbstractJmClient {
     }
 
     @Override
-    public JmFavoritePage getFavorites(int page) {
-        JmFavoritePage cachedJmFavoritePage = getCachedJmFavoritePage(page);
+    public JmFavoritePage getFavorites(FavoriteQuery query) {
+        JmFavoritePage cachedJmFavoritePage = getCachedJmFavoritePage(query);
         if (cachedJmFavoritePage != null) {
             return cachedJmFavoritePage;
         }
-        HttpUrl url = newHttpUrlBuilder()
+        int folderId = query.getFolderId();
+        int page = query.getPage();
+        HttpUrl.Builder url = newHttpUrlBuilder()
                 .addPathSegment("favorite")
-                .addQueryParameter("page", String.valueOf(page))
-                // API的收藏夹接口默认使用最新排序，不需要 'o' 参数
-                .build();
+                .addQueryParameter("page", String.valueOf(page));
+        // API的收藏夹接口默认使用最新排序，不需要 'o' 参数
+        if (folderId != 0) {
+            url.addQueryParameter("folder_id", String.valueOf(folderId));
+        }
 
-        JmApiResponse jmApiResponse = executeGetRequest(url, JmConstants.APP_TOKEN_SECRET);
-        JmFavoritePage jmFavoritePage = ApiParser.parseFavoritePage(jmApiResponse.getDecodedData(), page);
+        JmApiResponse jmApiResponse = executeGetRequest(url.build(), JmConstants.APP_TOKEN_SECRET);
+        JmFavoritePage jmFavoritePage = ApiParser.parseFavoritePage(jmApiResponse.getDecodedData(), query);
         cacheJmFavoritePage(jmFavoritePage);
         return jmFavoritePage;
 
@@ -241,7 +246,7 @@ public final class JmApiClient extends AbstractJmClient {
                     StringUtils.defaultIfBlank(usernameResult, ""),
                     StringUtils.defaultIfBlank(email, ""),
                     "yes".equalsIgnoreCase(emailVerifiedStr),
-                    StringUtils.defaultIfBlank(photo, ""),
+                    JmConstants.PROTOCOL_HTTPS + JmConstants.DEFAULT_IMAGE_DOMAINS.get(new Random().nextInt(JmConstants.DEFAULT_IMAGE_DOMAINS.size())) + "/media/users/" + StringUtils.defaultIfBlank(photo, ""),
                     StringUtils.defaultIfBlank(fname, ""),
                     StringUtils.defaultIfBlank(gender, ""),
                     StringUtils.defaultIfBlank(message, ""),

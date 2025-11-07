@@ -48,10 +48,10 @@ public interface JmClient extends AutoCloseable {
     /**
      * 获取收藏夹
      *
-     * @param page 页码
+     * @param query 收藏夹的参数
      * @return 收藏夹的一页结果
      */
-    JmFavoritePage getFavorites(int page);
+    JmFavoritePage getFavorites(FavoriteQuery query);
 
     /**
      * 获取分类排行

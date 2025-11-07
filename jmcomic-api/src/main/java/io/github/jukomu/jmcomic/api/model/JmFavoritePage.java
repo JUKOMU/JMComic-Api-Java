@@ -11,9 +11,21 @@ import java.util.Map;
  */
 public record JmFavoritePage(
         /*
+        收藏夹名称
+         */
+        String folderName,
+        /*
+        收藏夹ID
+         */
+        int folderId,
+        /*
           当前页码
          */
         int currentPage,
+        /*
+        收藏夹本子总数
+         */
+        int totalItems,
         /*
           收藏夹总共的页数
          */
@@ -30,12 +42,39 @@ public record JmFavoritePage(
 ) {
 
     /**
+     * 获取收藏夹名称
+     *
+     * @return 收藏夹名称
+     */
+    public String getFolderName() {
+        return folderName;
+    }
+
+    /**
+     * 获取收藏夹ID
+     *
+     * @return 收藏夹ID
+     */
+    public int getFolderId() {
+        return folderId;
+    }
+
+    /**
      * 获取当前页码
      *
      * @return 当前页码
      */
     public int getCurrentPage() {
         return currentPage;
+    }
+
+    /**
+     * 获取收藏夹本子总数
+     *
+     * @return 收藏夹本子总数
+     */
+    public int getTotalItems() {
+        return totalItems;
     }
 
     /**
