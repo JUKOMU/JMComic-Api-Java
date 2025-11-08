@@ -1,11 +1,8 @@
 package io.github.jukomu.jmcomic.api.model;
 
-import io.github.jukomu.jmcomic.api.enums.Category;
-import io.github.jukomu.jmcomic.api.enums.OrderBy;
-import io.github.jukomu.jmcomic.api.enums.TimeOption;
+import io.github.jukomu.jmcomic.api.enums.*;
 
 import java.util.Objects;
-import java.util.Optional;
 
 /**
  * @author JUKOMU
@@ -15,15 +12,17 @@ import java.util.Optional;
  */
 public final class SearchQuery {
 
+    private final SearchMainTag mainTag;
     private final String searchQuery;
     private final OrderBy orderBy;
     private final TimeOption timeOption;
     private final Category category;
-    private final String subCategory; // 网页端特有
+    private final SubCategory subCategory;
     private final int page;
 
     private SearchQuery(Builder builder) {
-        this.searchQuery = Objects.requireNonNull(builder.searchQuery, "Search query text cannot be null");
+        this.mainTag = Objects.requireNonNull(builder.mainTag, "Main tag cannot be null");
+        this.searchQuery = Objects.requireNonNull(builder.text, "Search query text cannot be null");
         this.orderBy = Objects.requireNonNull(builder.orderBy, "Order by cannot be null");
         this.timeOption = Objects.requireNonNull(builder.timeOption, "Time option cannot be null");
         this.category = Objects.requireNonNull(builder.category, "Category cannot be null");
@@ -32,6 +31,15 @@ public final class SearchQuery {
             throw new IllegalArgumentException("Page number must be greater than or equal to 1");
         }
         this.page = builder.page;
+    }
+
+    /**
+     * 获取搜索主标签/搜索类型
+     *
+     * @return 搜索主标签/搜索类型
+     */
+    public SearchMainTag getMainTag() {
+        return mainTag;
     }
 
     /**
@@ -75,8 +83,8 @@ public final class SearchQuery {
      *
      * @return 子分类的 Optional 包装
      */
-    public Optional<String> getSubCategory() {
-        return Optional.ofNullable(subCategory);
+    public SubCategory getSubCategory() {
+        return subCategory;
     }
 
     /**
@@ -92,12 +100,23 @@ public final class SearchQuery {
      * 用于创建 SearchQuery 实例的 Builder
      */
     public static class Builder {
-        private String searchQuery = "";
+        private SearchMainTag mainTag = SearchMainTag.SITE_SEARCH;
+        private String text = "";
         private OrderBy orderBy = OrderBy.LATEST;
         private TimeOption timeOption = TimeOption.ALL;
         private Category category = Category.ALL;
-        private String subCategory = null;
+        private SubCategory subCategory = null;
         private int page = 1;
+
+        /**
+         * 设置搜索主标签/搜索类型
+         *
+         * @param mainTag 搜索主标签/搜索类型
+         */
+        public Builder mainTag(SearchMainTag mainTag) {
+            this.mainTag = mainTag;
+            return this;
+        }
 
         /**
          * 设置搜索关键词
@@ -105,7 +124,7 @@ public final class SearchQuery {
          * @param searchQuery 搜索文本，例如 "無修正"
          */
         public Builder text(String searchQuery) {
-            this.searchQuery = searchQuery;
+            this.text = searchQuery;
             return this;
         }
 
@@ -140,11 +159,11 @@ public final class SearchQuery {
         }
 
         /**
-         * (高级) 设置网页端特有的子分类
+         * 设置副分类
          *
-         * @param subCategory 子分类的字符串值，例如 "chinese"
+         * @param subCategory 副分类枚举
          */
-        public Builder subCategory(String subCategory) {
+        public Builder subCategory(SubCategory subCategory) {
             this.subCategory = subCategory;
             return this;
         }

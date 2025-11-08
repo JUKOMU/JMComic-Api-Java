@@ -164,7 +164,7 @@ public final class JmApiClient extends AbstractJmClient {
     public JmSearchPage search(SearchQuery query) {
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment("search")
-                .addQueryParameter("main_tag", "0")
+                .addQueryParameter("main_tag", String.valueOf(query.getMainTag().getValue()))
                 .addQueryParameter("search_query", query.getSearchQuery())
                 .addQueryParameter("page", String.valueOf(query.getPage()))
                 .addQueryParameter("o", query.getOrderBy().getValue())

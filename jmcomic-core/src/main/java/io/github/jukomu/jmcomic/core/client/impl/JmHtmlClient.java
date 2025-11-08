@@ -3,6 +3,7 @@ package io.github.jukomu.jmcomic.core.client.impl;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.jukomu.jmcomic.api.enums.Category;
+import io.github.jukomu.jmcomic.api.enums.SubCategory;
 import io.github.jukomu.jmcomic.api.exception.*;
 import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
@@ -131,9 +132,10 @@ public final class JmHtmlClient extends AbstractJmClient {
                 .addPathSegment("photos");
 
         // 构建网页端特有的分类路径
-        buildCategoryPath(urlBuilder, query.getCategory(), query.getSubCategory().orElse(null));
+        buildCategoryPath(urlBuilder, query.getCategory(), query.getSubCategory());
 
-        urlBuilder.addQueryParameter("search_query", query.getSearchQuery())
+        urlBuilder.addQueryParameter("main_tag", String.valueOf(query.getMainTag().getValue()))
+                .addQueryParameter("search_query", query.getSearchQuery())
                 .addQueryParameter("page", String.valueOf(query.getPage()))
                 .addQueryParameter("o", query.getOrderBy().getValue())
                 .addQueryParameter("t", query.getTimeOption().getValue());
@@ -162,7 +164,7 @@ public final class JmHtmlClient extends AbstractJmClient {
                 .addPathSegment("albums");
 
         // 构建网页端特有的分类路径
-        buildCategoryPath(urlBuilder, query.getCategory(), query.getSubCategory().orElse(null));
+        buildCategoryPath(urlBuilder, query.getCategory(), query.getSubCategory());
 
         urlBuilder.addQueryParameter("page", String.valueOf(query.getPage()))
                 .addQueryParameter("o", query.getOrderBy().getValue())
@@ -504,10 +506,6 @@ public final class JmHtmlClient extends AbstractJmClient {
         }
         Request request = getGetRequestBuilder(url).build();
         try (Response response = client.newCall(request).execute()) {
-            // 对于HTML客户端，非200的响应码通常意味着需要用户介入（如Cloudflare验证）
-            // 或者资源不存在（会被重定向到错误页，但OkHttp默认不抛异常）
-            // 具体的错误逻辑（如检查是否重定向到/error/album_missing）可以在这里添加
-            // 或者依赖Parser在解析失败时抛出异常
             JmHtmlResponse jmHtmlResponse = new JmHtmlResponse(response);
             jmHtmlResponse.requireSuccess();
             return jmHtmlResponse;
@@ -539,13 +537,13 @@ public final class JmHtmlClient extends AbstractJmClient {
         return executePostRequest(url, requestBody, true);
     }
 
-    private void buildCategoryPath(HttpUrl.Builder builder, Category category, String subCategory) {
+    private void buildCategoryPath(HttpUrl.Builder builder, Category category, SubCategory subCategory) {
         if (category == null || category == Category.ALL) {
             return;
         }
         builder.addPathSegment(category.getValue());
-        if (subCategory != null && !subCategory.isEmpty()) {
-            builder.addPathSegment("sub").addPathSegment(subCategory);
+        if (subCategory != null) {
+            builder.addPathSegment("sub").addPathSegment(subCategory.getValue());
         }
     }
 
