@@ -82,6 +82,9 @@ public abstract class AbstractJmClient implements JmClient {
      */
     protected abstract void initialize();
 
+    /**
+     * 更新域名列表
+     */
     protected abstract void updateDomains();
 
     @Override

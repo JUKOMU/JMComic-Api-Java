@@ -14,6 +14,7 @@ import io.github.jukomu.jmcomic.core.net.model.JmHtmlResponse;
 import io.github.jukomu.jmcomic.core.net.model.JmResponse;
 import io.github.jukomu.jmcomic.core.net.provider.JmDomainManager;
 import io.github.jukomu.jmcomic.core.parser.ApiParser;
+import io.github.jukomu.jmcomic.core.util.JsonUtils;
 import okhttp3.*;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -22,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import java.net.CookieManager;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 /**
@@ -78,6 +80,18 @@ public final class JmApiClient extends AbstractJmClient {
         if (!success) {
             logger.error("获取最新域名列表失败。");
         }
+    }
+
+    /**
+     * 获取API客户端配置
+     */
+    public Map setting() {
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment("setting")
+                .build();
+        JmApiResponse jmApiResponse = executeGetRequest(url, JmConstants.APP_TOKEN_SECRET);
+        String decodedData = jmApiResponse.getDecodedData();
+        return JsonUtils.fromJson(decodedData, Map.class);
     }
 
     // == 核心数据获取层实现 ==
@@ -173,7 +187,6 @@ public final class JmApiClient extends AbstractJmClient {
         HttpUrl.Builder url = newHttpUrlBuilder()
                 .addPathSegment("favorite")
                 .addQueryParameter("page", String.valueOf(page));
-        // API的收藏夹接口默认使用最新排序，不需要 'o' 参数
         if (folderId != 0) {
             url.addQueryParameter("folder_id", String.valueOf(folderId));
         }
