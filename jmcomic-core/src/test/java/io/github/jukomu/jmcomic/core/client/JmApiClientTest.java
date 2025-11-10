@@ -1,21 +1,19 @@
 package io.github.jukomu.jmcomic.core.client;
 
-import io.github.jukomu.jmcomic.api.client.JmClient;
-import io.github.jukomu.jmcomic.api.config.JmConfiguration;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
-import io.github.jukomu.jmcomic.api.model.*;
-import io.github.jukomu.jmcomic.api.strategy.AlbumPathGenerator;
-import io.github.jukomu.jmcomic.api.strategy.PhotoPathGenerator;
+import io.github.jukomu.jmcomic.api.model.JmAlbum;
+import io.github.jukomu.jmcomic.api.model.JmImage;
+import io.github.jukomu.jmcomic.api.model.JmPhoto;
+import io.github.jukomu.jmcomic.api.model.JmPhotoMeta;
 import io.github.jukomu.jmcomic.core.JmComic;
-import io.github.jukomu.jmcomic.core.util.FileUtils;
+import io.github.jukomu.jmcomic.core.client.impl.JmApiClient;
+import io.github.jukomu.jmcomic.core.config.JmConfiguration;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -47,22 +45,11 @@ public class JmApiClientTest {
 
     static JmConfiguration.Builder jmConfigurationBuilder = new JmConfiguration.Builder()
             .clientType(ClientType.API);
-    static JmClient jmClient = JmComic.newClient(jmConfigurationBuilder.build());
-//    static {
-//        jmClient.login("xxx", "xxx");
-//    }
-
-//    @Test
-//    @Order(1)
-    public void testLogin() {
-        JmUserInfo userInfo = jmClient.login("xxx", "xxx");
-        assertNotNull(userInfo, "登录用户不应为空");
-        System.out.println("✅ [SUCCESS] 登录 " + userInfo.username() + " 获取成功。");
-    }
+    static JmApiClient jmClient = JmComic.newApiClient(jmConfigurationBuilder.build());
 
     @ParameterizedTest
     @ValueSource(strings = {albumId1, albumId2, albumId3, albumId4, albumId5})
-    @Order(2)
+    @Order(1)
     public void testGetAlbum(String albumId) {
         assertNotNull(jmClient.getAlbum(albumId), "本子" + albumId1 + "结果不应为null");
         System.out.println("✅ [SUCCESS] 本子 " + albumId + " 获取成功。");
@@ -70,14 +57,14 @@ public class JmApiClientTest {
 
     @ParameterizedTest
     @ValueSource(strings = {photoId1, photoId2, photoId3, photoId4, photoId5})
-    @Order(3)
+    @Order(2)
     public void testGetPhoto(String photoId) {
         assertNotNull(jmClient.getPhoto(photoId), "章节" + photoId1 + "结果不应为null");
         System.out.println("✅ [SUCCESS] 章节 " + photoId + " 获取成功。");
     }
 
     @TestFactory
-    @Order(4)
+    @Order(3)
     Stream<DynamicTest> testAllImagesDynamically() {
         System.out.println("开始为本子 " + albumForImages + " 生成图片测试...");
         JmAlbum album = jmClient.getAlbum(albumForImages);
@@ -95,18 +82,5 @@ public class JmApiClientTest {
                         }
                 )
         );
-    }
-
-    @Test
-    public void testDownloadAlbum() {
-        JmAlbum album = jmClient.getAlbum(albumId5);
-        System.out.println(album);
-    }
-
-//    @Test
-    public void testDownloadPhoto() {
-        JmPhoto photo = jmClient.getPhoto(photoId1);
-        PhotoPathGenerator photoPathGenerator = photo1 -> Path.of(photo.albumId(), FileUtils.sanitizeFilename(photo.title()) , photo.id());
-        jmClient.downloadPhoto(photo, photoPathGenerator);
     }
 }
