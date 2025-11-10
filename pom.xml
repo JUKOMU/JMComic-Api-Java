@@ -39,6 +39,8 @@
         <slf4j.version>2.0.12</slf4j.version>
         <junit.version>5.10.2</junit.version>
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+        <maven.source.plugin.version>3.3.0</maven.source.plugin.version>
+        <maven.javadoc.plugin.version>3.6.2</maven.javadoc.plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -123,42 +125,35 @@
                         <target>${java.version}</target>
                     </configuration>
                 </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>3.6.3</version>
-                    <executions>
-                        <execution>
-                            <id>attach-javadocs</id>
-                            <goals>
-                                <goal>jar</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                    <configuration>
-                        <doclint>none</doclint>
-                    </configuration>
-                </plugin>
+                <!-- sources -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-source-plugin</artifactId>
-                    <version>3.3.1</version>
+                    <version>${maven.source.plugin.version}</version>
                     <executions>
                         <execution>
                             <id>attach-sources</id>
-                            <goals>
-                                <goal>jar-no-fork</goal>
-                            </goals>
+                            <phase>package</phase>
+                            <goals><goal>jar</goal></goals>
                         </execution>
                     </executions>
                 </plugin>
+                <!-- javadoc -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-javadoc-plugin</artifactId>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-source-plugin</artifactId>
+                    <version>${maven.javadoc.plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>attach-javadocs</id>
+                            <phase>package</phase>
+                            <goals><goal>jar</goal></goals>
+                            <configuration>
+                                <failOnError>false</failOnError>
+                                <encoding>UTF-8</encoding>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
