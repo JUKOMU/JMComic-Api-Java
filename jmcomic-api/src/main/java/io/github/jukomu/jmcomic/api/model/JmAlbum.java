@@ -240,7 +240,7 @@ public record JmAlbum(
     /**
      * 根据章节顺序获取章节概要信息 photoIndex>=1
      *
-     * @return photoIndex<0 返回第一个章节, 若photoIndex大于总章节数则返回最后一个章节
+     * @return {@code photoIndex < 0} 返回第一个章节，若 {@code photoIndex} 大于总章节数则返回最后一个章节
      */
     public JmPhotoMeta getPhotoMeta(int photoIndex) {
         if (photoIndex < 0) {

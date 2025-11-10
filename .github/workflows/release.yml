@@ -5,6 +5,16 @@ on:
     tags:
       - "v*.*.*"
       - "v*.*.*-*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag name to release (e.g. v0.0.1)"
+        required: false
+      prerelease:
+        description: "Mark as pre-release?"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -16,7 +26,6 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,11 +37,10 @@ jobs:
           java-version: 17
           cache: maven
 
-      # 仅构建 api 和 core 模块；-am 会自动构建其依赖（比如 core 需要 api）
+      # 仅构建 api 和 core
       - name: Package api & core
         run: |
           mvn -B -ntp -pl jmcomic-api,jmcomic-core -am -DskipTests clean package
-          mvn -B -ntp -pl jmcomic-api,jmcomic-core -am -DskipTests source:jar javadoc:jar
 
       - name: Collect artifacts (api & core only)
         run: |
@@ -44,8 +52,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
           draft: false
-          prerelease: ${{ contains(github.ref, '-') }}
+          prerelease: ${{ inputs.prerelease || contains(github.ref, '-') }}
           files: dist/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
