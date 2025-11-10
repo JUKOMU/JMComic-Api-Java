@@ -43,44 +43,44 @@ public class JmApiClientTest {
 
     private final String albumForImages = "384743";
 
-//    static JmConfiguration.Builder jmConfigurationBuilder = new JmConfiguration.Builder()
-//            .clientType(ClientType.API);
-//    static JmApiClient jmClient = JmComic.newApiClient(jmConfigurationBuilder.build());
+    static JmConfiguration.Builder jmConfigurationBuilder = new JmConfiguration.Builder()
+            .clientType(ClientType.API);
+    static JmApiClient jmClient = JmComic.newApiClient(jmConfigurationBuilder.build());
 
-//    @ParameterizedTest
-//    @ValueSource(strings = {albumId1, albumId2, albumId3, albumId4, albumId5})
-//    @Order(1)
-//    public void testGetAlbum(String albumId) {
-//        assertNotNull(jmClient.getAlbum(albumId), "本子" + albumId1 + "结果不应为null");
-//        System.out.println("✅ [SUCCESS] 本子 " + albumId + " 获取成功。");
-//    }
-//
-//    @ParameterizedTest
-//    @ValueSource(strings = {photoId1, photoId2, photoId3, photoId4, photoId5})
-//    @Order(2)
-//    public void testGetPhoto(String photoId) {
-//        assertNotNull(jmClient.getPhoto(photoId), "章节" + photoId1 + "结果不应为null");
-//        System.out.println("✅ [SUCCESS] 章节 " + photoId + " 获取成功。");
-//    }
-//
-//    @TestFactory
-//    @Order(3)
-//    Stream<DynamicTest> testAllImagesDynamically() {
-//        System.out.println("开始为本子 " + albumForImages + " 生成图片测试...");
-//        JmAlbum album = jmClient.getAlbum(albumForImages);
-//        JmPhotoMeta photoMeta = album.getPhotoMeta(1);
-//        JmPhoto photo = jmClient.getPhoto(photoMeta.id());
-//        List<JmImage> images = photo.images();
-//
-//        return images.stream().map(img ->
-//                DynamicTest.dynamicTest(
-//                        "测试图片: " + img.getTag(),
-//                        () -> {
-//                            byte[] imageBytes = jmClient.fetchImageBytes(img);
-//                            assertNotNull(imageBytes, "图片 " + img.getTag() + " 的字节结果不应为null");
-//                            System.out.println("✅ [SUCCESS] 图片 " + img.getTag() + " 获取成功。");
-//                        }
-//                )
-//        );
-//    }
+    @ParameterizedTest
+    @ValueSource(strings = {albumId1, albumId2, albumId3, albumId4, albumId5})
+    @Order(1)
+    public void testGetAlbum(String albumId) {
+        assertNotNull(jmClient.getAlbum(albumId), "本子" + albumId1 + "结果不应为null");
+        System.out.println("✅ [SUCCESS] 本子 " + albumId + " 获取成功。");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {photoId1, photoId2, photoId3, photoId4, photoId5})
+    @Order(2)
+    public void testGetPhoto(String photoId) {
+        assertNotNull(jmClient.getPhoto(photoId), "章节" + photoId1 + "结果不应为null");
+        System.out.println("✅ [SUCCESS] 章节 " + photoId + " 获取成功。");
+    }
+
+    @TestFactory
+    @Order(3)
+    Stream<DynamicTest> testAllImagesDynamically() {
+        System.out.println("开始为本子 " + albumForImages + " 生成图片测试...");
+        JmAlbum album = jmClient.getAlbum(albumForImages);
+        JmPhotoMeta photoMeta = album.getPhotoMeta(1);
+        JmPhoto photo = jmClient.getPhoto(photoMeta.id());
+        List<JmImage> images = photo.images();
+
+        return images.stream().map(img ->
+                DynamicTest.dynamicTest(
+                        "测试图片: " + img.getTag(),
+                        () -> {
+                            byte[] imageBytes = jmClient.fetchImageBytes(img);
+                            assertNotNull(imageBytes, "图片 " + img.getTag() + " 的字节结果不应为null");
+                            System.out.println("✅ [SUCCESS] 图片 " + img.getTag() + " 获取成功。");
+                        }
+                )
+        );
+    }
 }
