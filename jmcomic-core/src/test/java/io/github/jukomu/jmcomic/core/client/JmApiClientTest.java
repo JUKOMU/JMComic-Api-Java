@@ -43,9 +43,9 @@ public class JmApiClientTest {
 
     private final String albumForImages = "384743";
 
-    static JmConfiguration.Builder jmConfigurationBuilder = new JmConfiguration.Builder()
-            .clientType(ClientType.API);
-    static JmApiClient jmClient = JmComic.newApiClient(jmConfigurationBuilder.build());
+//    static JmConfiguration.Builder jmConfigurationBuilder = new JmConfiguration.Builder()
+//            .clientType(ClientType.API);
+//    static JmApiClient jmClient = JmComic.newApiClient(jmConfigurationBuilder.build());
 
 //    @ParameterizedTest
 //    @ValueSource(strings = {albumId1, albumId2, albumId3, albumId4, albumId5})
