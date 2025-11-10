@@ -25,10 +25,9 @@ public final class JmImageTool {
     }
 
     private static Optional<ImageProcessor> loadFirstImageProcessor() {
-        try {
-            Class.forName("android.os.Build");
+        if (detectAndroid()) {
             return Optional.of(new AndroidImageProcessor());
-        } catch (ClassNotFoundException e) {
+        } else {
             return Optional.empty();
         }
     }
@@ -89,5 +88,14 @@ public final class JmImageTool {
             return "jpeg"; // 默认返回jpeg
         }
         return filename.substring(dotIndex + 1).toLowerCase();
+    }
+
+    private static boolean detectAndroid() {
+        try {
+            Class.forName("javax.imageio.ImageIO");
+            return false;
+        } catch (ClassNotFoundException e) {
+            return true;
+        }
     }
 }
