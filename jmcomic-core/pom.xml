@@ -16,7 +16,7 @@
         <dependency>
             <groupId>io.github.jukomu</groupId>
             <artifactId>jmcomic-api</artifactId>
-            <version>0.0.1</version>
+            <version>${project.version}</version>
             <scope>compile</scope>
         </dependency>
         <!-- 工具 -->
@@ -73,20 +73,6 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
             <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>${slf4j.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.google.android</groupId>
-            <artifactId>android</artifactId>
-            <version>4.1.1.4</version>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
 

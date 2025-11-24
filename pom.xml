@@ -12,6 +12,7 @@
         <module>jmcomic-api</module>
         <module>jmcomic-core</module>
         <module>jmcomic-sample</module>
+        <module>jmcomic-android-support</module>
     </modules>
 
     <name>JMComic API for Java</name>

@@ -2,11 +2,9 @@ package io.github.jukomu.jmcomic.core.crypto;
 
 import io.github.jukomu.jmcomic.api.model.JmImage;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
-import io.github.jukomu.jmcomic.core.image.AndroidImageProcessor;
-import io.github.jukomu.jmcomic.core.image.AwtImageProcessor;
 import io.github.jukomu.jmcomic.core.image.spi.ImageProcessor;
 
-import java.util.Optional;
+import java.util.ServiceLoader;
 
 /**
  * @author JUKOMU
@@ -15,20 +13,21 @@ import java.util.Optional;
  * @Date: 2025/10/28
  */
 public final class JmImageTool {
-    // 通过 ServiceLoader 懒加载 ImageProcessor 实现
-    private static final Optional<ImageProcessor> customProcessor = loadFirstImageProcessor();
-
-    // 默认的 AWT 实现作为回退
-    private static final ImageProcessor fallbackProcessor = new AwtImageProcessor();
+    private static ImageProcessor customProcessor = loadFirstImageProcessor();
 
     private JmImageTool() {
     }
 
-    private static Optional<ImageProcessor> loadFirstImageProcessor() {
-        if (detectAndroid()) {
-            return Optional.of(new AndroidImageProcessor());
-        } else {
-            return Optional.empty();
+    private static ImageProcessor loadFirstImageProcessor() {
+        ServiceLoader<ImageProcessor> loader = ServiceLoader.load(ImageProcessor.class);
+        for (ImageProcessor spi : loader) {
+            return spi;
+        }
+        try {
+            Class<?> clazz = Class.forName("io.github.jukomu.jmcomic.core.image.AwtImageProcessor");
+            return (ImageProcessor) clazz.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            throw new RuntimeException("当前环境不支持 AWT，且未导入 Android Support 模块！", e);
         }
     }
 
@@ -41,7 +40,7 @@ public final class JmImageTool {
      * @return 解密（重组）后的图片字节数组
      */
     public static byte[] decryptImage(byte[] imageData, JmImage image) {
-        ImageProcessor processor = customProcessor.orElse(fallbackProcessor);
+        ImageProcessor processor = customProcessor;
         return processor.decryptImage(imageData, image);
     }
 
@@ -88,14 +87,5 @@ public final class JmImageTool {
             return "jpeg"; // 默认返回jpeg
         }
         return filename.substring(dotIndex + 1).toLowerCase();
-    }
-
-    private static boolean detectAndroid() {
-        try {
-            Class.forName("javax.imageio.ImageIO");
-            return false;
-        } catch (ClassNotFoundException e) {
-            return true;
-        }
     }
 }

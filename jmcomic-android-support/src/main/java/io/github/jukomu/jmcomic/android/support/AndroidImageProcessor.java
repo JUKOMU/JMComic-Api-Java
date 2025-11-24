@@ -1,4 +1,4 @@
-package io.github.jukomu.jmcomic.core.image;
+package io.github.jukomu.jmcomic.android.support;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -18,7 +18,7 @@ import static io.github.jukomu.jmcomic.core.crypto.JmImageTool.calculateNumSegme
  * @author JUKOMU
  * @Description: ImageProcessor 的一个实现，基于 Android平台的 Bitmap
  * @Project: jmcomic-api-java
- * @Date: 2025/11/4
+ * @Date: 2025/11/25
  */
 public class AndroidImageProcessor implements ImageProcessor {
 
@@ -34,7 +34,7 @@ public class AndroidImageProcessor implements ImageProcessor {
         try {
             Bitmap originalBitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length);
             if (originalBitmap == null) {
-                throw new RuntimeException("Failed to decode image data into a Bitmap.");
+                throw new JmComicException("Failed to read image data. The data may be corrupted or in an unsupported format.");
             }
 
             int width = originalBitmap.getWidth();
@@ -99,6 +99,4 @@ public class AndroidImageProcessor implements ImageProcessor {
             default -> Bitmap.CompressFormat.JPEG;
         };
     }
-
-
 }
