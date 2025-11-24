@@ -37,16 +37,17 @@ jobs:
           java-version: 17
           cache: maven
 
-      # 仅构建 api 和 core
+      # 仅构建 api 和 core 和 android-support
       - name: Package api & core
         run: |
-          mvn -B -ntp -pl jmcomic-api,jmcomic-core -am -DskipTests clean package
+          mvn -B -ntp -pl jmcomic-api,jmcomic-core,jmcomic-android-support -am -DskipTests clean package
 
       - name: Collect artifacts (api & core only)
         run: |
           mkdir -p dist
           cp jmcomic-api/target/*.jar dist/ || true
           cp jmcomic-core/target/*.jar dist/ || true
+          cp jmcomic-android-support/target/*.jar dist/ || true
           ls -l dist
 
       - name: Create GitHub Release
