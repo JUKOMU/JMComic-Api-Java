@@ -1,4 +1,4 @@
-name: Release (api & core only)
+name: Release
 
 on:
   push:
