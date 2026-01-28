@@ -74,7 +74,7 @@ public abstract class AbstractJmClient implements JmClient {
         this.concurrentPhotoDownloads = config.getConcurrentPhotoDownloads();
         // 同时下载的图片数
         this.concurrentImageDownloads = config.getConcurrentImageDownloads();
-        this.initialize();
+        this.internalExecutor.submit(this::initialize);
     }
 
     /**
