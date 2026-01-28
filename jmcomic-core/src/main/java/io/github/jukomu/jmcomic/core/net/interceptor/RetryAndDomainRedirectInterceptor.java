@@ -37,16 +37,15 @@ public final class RetryAndDomainRedirectInterceptor implements Interceptor {
         IOException lastException = null;
 
         for (int tryCount = 0; tryCount <= maxRetriesPerRequest; tryCount++) {
-            // 获取当前最佳域名
-            String bestDomain = domainManager.getBestDomain();
-            if (bestDomain == null) {
-                throw new IOException("No available domains to try. All domains have been marked as failed.", lastException);
-            }
-
             Request requestToProceed;
             final boolean isPlaceholder = isPlaceholderRequest(originalRequest);
 
             if (isPlaceholder) {
+                // 获取当前最佳域名
+                String bestDomain = domainManager.getBestDomain();
+                if (bestDomain == null) {
+                    throw new IOException("No available domains to try. All domains have been marked as failed.", lastException);
+                }
                 // 如果是占位符请求，总是用最佳域名替换
                 Request requestToProceed1 = replaceHost(originalRequest, bestDomain);
                 requestToProceed = addAddHeaders(requestToProceed1, bestDomain);

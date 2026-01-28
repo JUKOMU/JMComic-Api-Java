@@ -56,6 +56,7 @@ public abstract class AbstractJmClient implements JmClient {
         this.httpClient = Objects.requireNonNull(httpClient);
         this.cookieManager = Objects.requireNonNull(cookieManager);
         this.domainManager = Objects.requireNonNull(domainManager);
+        this.domainManager.setInitialized(false);
 
         // 根据配置决定 ExecutorService
         if (config.getExecutor() != null) {
@@ -74,7 +75,10 @@ public abstract class AbstractJmClient implements JmClient {
         this.concurrentPhotoDownloads = config.getConcurrentPhotoDownloads();
         // 同时下载的图片数
         this.concurrentImageDownloads = config.getConcurrentImageDownloads();
-        this.internalExecutor.submit(this::initialize);
+        this.internalExecutor.submit(() -> {
+            this.initialize();
+            this.domainManager.setInitialized(true);
+        });
     }
 
     /**

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -20,6 +21,8 @@ public final class JmDomainManager {
 
     private final CopyOnWriteArrayList<String> domains;
     private final ConcurrentHashMap<String, AtomicInteger> failureCounts = new ConcurrentHashMap<>();
+    private volatile boolean initialized = false;
+    private volatile CountDownLatch initLatch = new CountDownLatch(1);
 
     public JmDomainManager(List<String> domains) {
         this.domains = new CopyOnWriteArrayList<>(domains);
@@ -32,6 +35,7 @@ public final class JmDomainManager {
      * @return 状态最佳的域名。如果没有可用域名则返回 null。
      */
     public String getBestDomain() {
+        blockUntilInitialized();
         return domains.stream()
                 .min(Comparator.comparingInt(domain -> failureCounts.get(domain).get()))
                 .orElse(null);
@@ -67,6 +71,7 @@ public final class JmDomainManager {
      * @return 一个包含域名及其失败次数的Map。
      */
     public Map<String, Integer> getDomainStates() {
+        blockUntilInitialized();
         return domains.stream()
                 .collect(Collectors.toMap(
                         domain -> domain,
@@ -89,5 +94,39 @@ public final class JmDomainManager {
 
     public CopyOnWriteArrayList<String> getDomains() {
         return domains;
+    }
+
+    public boolean isInitialized() {
+        return initialized;
+    }
+
+    /**
+     * 设置初始化状态
+     */
+    public void setInitialized(boolean initialized) {
+        this.initialized = initialized;
+        if (initialized) {
+            if (initLatch.getCount() > 0) {
+                initLatch.countDown();
+            }
+        } else {
+            if (initLatch.getCount() == 0) {
+                initLatch = new CountDownLatch(1);
+            }
+        }
+    }
+
+    /**
+     * 阻塞等待直到初始化完成
+     */
+    private void blockUntilInitialized() {
+        if (this.initialized) return;
+        try {
+            CountDownLatch latch = this.initLatch;
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Wait for initialization was interrupted", e);
+        }
     }
 }

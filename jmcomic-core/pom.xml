@@ -58,6 +58,14 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+        <!-- 日志实现 -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${slf4j.version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- 测试依赖 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
