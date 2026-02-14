@@ -151,8 +151,8 @@ public final class JmHtmlClient extends AbstractJmClient {
             } else {
                 return HtmlParser.parseSearchPage(jmHtmlResponse.getHtml(), query.getPage());
             }
-        } catch (ApiResponseException e) {
-            throw new ApiResponseException("Failed to search " + query + ": " + e.getMessage());
+        } catch (ResponseException e) {
+            throw new ResponseException("Failed to search " + query + ": " + e.getMessage());
         } catch (NetworkException e) {
             throw new NetworkException("Failed to search " + query + " due to I/O error", e);
         }
@@ -173,8 +173,8 @@ public final class JmHtmlClient extends AbstractJmClient {
         try {
             JmHtmlResponse jmHtmlResponse = executeGetRequest(urlBuilder.build());
             return HtmlParser.parseSearchPage(jmHtmlResponse.getHtml(), query.getPage());
-        } catch (ApiResponseException e) {
-            throw new ApiResponseException("Failed to search " + query + ": " + e.getMessage());
+        } catch (ResponseException e) {
+            throw new ResponseException("Failed to search " + query + ": " + e.getMessage());
         } catch (NetworkException e) {
             throw new NetworkException("Failed to search " + query + " due to I/O error", e);
         }
@@ -205,8 +205,8 @@ public final class JmHtmlClient extends AbstractJmClient {
             JmFavoritePage jmFavoritePage = HtmlParser.parseFavoritePage(jmHtmlResponse.getHtml(), page);
             cacheJmFavoritePage(jmFavoritePage);
             return jmFavoritePage;
-        } catch (ApiResponseException e) {
-            throw new ApiResponseException("Failed to get favorites: " + e.getMessage());
+        } catch (ResponseException e) {
+            throw new ResponseException("Failed to get favorites: " + e.getMessage());
         } catch (NetworkException e) {
             throw new NetworkException("Failed to get favorites due to I/O error", e);
         }
@@ -234,8 +234,8 @@ public final class JmHtmlClient extends AbstractJmClient {
             super.cacheUsername(username);
             // TODO 获取用户信息
             return JmUserInfo.partial(username);
-        } catch (ApiResponseException e) {
-            throw new ApiResponseException("Login failed: " + e.getMessage());
+        } catch (ResponseException e) {
+            throw new ResponseException("Login failed: " + e.getMessage());
         } catch (NetworkException e) {
             throw new NetworkException("Login failed due to I/O error", e);
         }
@@ -272,7 +272,7 @@ public final class JmHtmlClient extends AbstractJmClient {
                 if (jsonObject.has("message") && !jsonObject.get("message").isJsonNull()) {
                     message = jsonObject.get("message").getAsString();
                 }
-                throw new ApiResponseException("Failed to post comment :" + message);
+                throw new ResponseException("Failed to post comment :" + message);
             }
             /*
               API响应中只包含评论ID (cid)，不包含新评论的完整信息。
@@ -284,8 +284,8 @@ public final class JmHtmlClient extends AbstractJmClient {
                 cid = jsonObject.get("cid").getAsString();
             }
             return new JmComment(cid, "", getLoggedInUserName(), commentText, "");
-        } catch (ApiResponseException e) {
-            throw new ApiResponseException("Post comment failed" + e.getMessage());
+        } catch (ResponseException e) {
+            throw new ResponseException("Post comment failed" + e.getMessage());
         } catch (NetworkException e) {
             throw new NetworkException("Post comment request failed", e);
         } catch (Exception e) {
@@ -326,7 +326,7 @@ public final class JmHtmlClient extends AbstractJmClient {
                 if (jsonObject.has("message") && !jsonObject.get("message").isJsonNull()) {
                     message = jsonObject.get("message").getAsString();
                 }
-                throw new ApiResponseException("Failed to post comment :" + message);
+                throw new ResponseException("Failed to post comment :" + message);
             }
             /*
               API响应中只包含评论ID (cid)，不包含新评论的完整信息。
@@ -338,8 +338,8 @@ public final class JmHtmlClient extends AbstractJmClient {
                 cid = jsonObject.get("cid").getAsString();
             }
             return new JmComment(cid, "", getLoggedInUserName(), commentText, "");
-        } catch (ApiResponseException e) {
-            throw new ApiResponseException("Post comment failed" + e.getMessage());
+        } catch (ResponseException e) {
+            throw new ResponseException("Post comment failed" + e.getMessage());
         } catch (NetworkException e) {
             throw new NetworkException("Post comment request failed", e);
         } catch (Exception e) {
@@ -373,13 +373,13 @@ public final class JmHtmlClient extends AbstractJmClient {
                         message = jsonObject.get("msg").getAsString();
                     }
                     // 已经在收藏夹中
-                    throw new ApiResponseException("Failed to add to favorites: " + message);
+                    throw new ResponseException("Failed to add to favorites: " + message);
                 }
             } catch (Exception e) {
                 throw new ParseResponseException("Failed to parse 'add to favorite' response", e);
             }
-        } catch (ApiResponseException e) {
-            throw new ApiResponseException("Failed to add to favorites: " + e.getMessage());
+        } catch (ResponseException e) {
+            throw new ResponseException("Failed to add to favorites: " + e.getMessage());
         } catch (NetworkException e) {
             throw new NetworkException("Failed to add to favorites", e);
         }
@@ -402,12 +402,12 @@ public final class JmHtmlClient extends AbstractJmClient {
                     return location;
                 }
             }
-        } catch (ApiResponseException e) {
-            throw new ApiResponseException("Failed to get html url: " + e.getMessage());
+        } catch (ResponseException e) {
+            throw new ResponseException("Failed to get html url: " + e.getMessage());
         } catch (NetworkException e) {
             throw new NetworkException("Failed to get html url", e);
         }
-        throw new ApiResponseException("Failed to get html url");
+        throw new ResponseException("Failed to get html url");
     }
 
     /**
@@ -428,8 +428,8 @@ public final class JmHtmlClient extends AbstractJmClient {
         try {
             JmHtmlResponse jmHtmlResponse = executeGetRequest(HttpUrl.parse(JmConstants.JM_PUB_URL));
             return HtmlParser.parseJmPubHtml(jmHtmlResponse.getHtml());
-        } catch (ApiResponseException e) {
-            throw new ApiResponseException("Failed to get html domains: " + e.getMessage());
+        } catch (ResponseException e) {
+            throw new ResponseException("Failed to get html domains: " + e.getMessage());
         } catch (NetworkException e) {
             throw new NetworkException("Failed to get html domains", e);
         }
@@ -446,7 +446,7 @@ public final class JmHtmlClient extends AbstractJmClient {
         Set<String> domainSet = ConcurrentHashMap.newKeySet();
         List<String> urlsToFetch = new ArrayList<>();
         for (int i = indexRange[0]; i <= indexRange[1]; i++) {
-            urlsToFetch.add(template + String.valueOf(i) + ".html");
+            urlsToFetch.add(template + i + ".html");
         }
 
         int poolSize = Math.min(urlsToFetch.size(), Runtime.getRuntime().availableProcessors() * 2);

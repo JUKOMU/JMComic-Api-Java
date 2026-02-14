@@ -1,5 +1,7 @@
 package io.github.jukomu.jmcomic.core.net.model;
 
+import io.github.jukomu.jmcomic.api.exception.ResourceNotFoundException;
+import io.github.jukomu.jmcomic.api.exception.ResponseException;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
 import io.github.jukomu.jmcomic.core.crypto.JmCryptoTool;
 import okhttp3.Response;
@@ -43,6 +45,16 @@ public class JmApiResponse extends JmResponse {
         // 检查API返回的code字段
         Object code = getJson().get("code");
         return code instanceof Number && ((Number) code).intValue() == 200;
+    }
+
+    @Override
+    public void requireSuccess() throws ResponseException {
+        super.requireSuccess();
+        String decodedData = getDecodedData();
+        // 判断本子是否存在
+        if (decodedData.contains("\"name\":null") && decodedData.contains("\"images\":[]")) {
+            throw new ResourceNotFoundException("请求的资源不存在", getOriginUrl());
+        }
     }
 
     /**

@@ -1,7 +1,6 @@
 package io.github.jukomu.jmcomic.core.net.model;
 
-import io.github.jukomu.jmcomic.api.exception.ApiResponseException;
-import io.github.jukomu.jmcomic.api.exception.ResourceNotFoundException;
+import io.github.jukomu.jmcomic.api.exception.ResponseException;
 import okhttp3.Response;
 
 /**
@@ -45,29 +44,12 @@ public class JmResponse extends CommonResponse {
     /**
      * 如果请求不成功，则抛出异常
      *
-     * @throws ApiResponseException 如果请求不成功
+     * @throws ResponseException 如果请求不成功
      */
     @Override
-    public void requireSuccess() throws ApiResponseException {
+    public void requireSuccess() throws ResponseException {
         if (isNotSuccess()) {
-            throw new ApiResponseException("Request failed with code: " + getHttpCode() + ", error message: " + getErrorMessage());
-        }
-
-        // 检查重定向
-        if (isRedirect()) {
-            // 检查是否重定向为错误页面
-            String redirectUrl = getRedirectUrl();
-            String originUrl = getOriginUrl();
-            if (!redirectUrl.contains("/error/")) {
-                return;
-            }
-            if (redirectUrl.endsWith("/error/album_missing") && !originUrl.endsWith("/error/album_missing")) {
-                throw new ResourceNotFoundException("请求的资源不存在", originUrl);
-            } else if (redirectUrl.endsWith("/error/user_missing") && !originUrl.endsWith("/error/user_missing")) {
-                throw new ApiResponseException("此用户名称不存在，或者你没有登录，请再次确认使用名称");
-            } else if (redirectUrl.endsWith("/error/invalid_module") && !originUrl.endsWith("/error/invalid_module")) {
-                throw new ApiResponseException("发生了无法预期的错误。若问题持续发生，请联系客服支持");
-            }
+            throw new ResponseException("Request failed with code: " + getHttpCode() + ", error message: " + getErrorMessage());
         }
     }
 

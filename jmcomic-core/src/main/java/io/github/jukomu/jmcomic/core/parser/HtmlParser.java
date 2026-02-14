@@ -3,8 +3,8 @@ package io.github.jukomu.jmcomic.core.parser;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
-import io.github.jukomu.jmcomic.api.exception.ApiResponseException;
 import io.github.jukomu.jmcomic.api.exception.ParseResponseException;
+import io.github.jukomu.jmcomic.api.exception.ResponseException;
 import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
 import org.apache.commons.lang3.StringUtils;
@@ -382,7 +382,7 @@ public final class HtmlParser {
 
         Element errorElement = doc.selectFirst("div.alert-danger");
         if (errorElement != null) {
-            throw new ApiResponseException(errorElement.text());
+            throw new ResponseException(errorElement.text());
         }
 
         // 总结果数

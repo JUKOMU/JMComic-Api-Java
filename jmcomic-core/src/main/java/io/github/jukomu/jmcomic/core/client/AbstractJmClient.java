@@ -3,8 +3,8 @@ package io.github.jukomu.jmcomic.core.client;
 import io.github.jukomu.jmcomic.api.client.DownloadResult;
 import io.github.jukomu.jmcomic.api.client.JmClient;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
-import io.github.jukomu.jmcomic.api.exception.ApiResponseException;
 import io.github.jukomu.jmcomic.api.exception.NetworkException;
+import io.github.jukomu.jmcomic.api.exception.ResponseException;
 import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.api.strategy.IAlbumPathGenerator;
 import io.github.jukomu.jmcomic.api.strategy.IImagePathGenerator;
@@ -106,8 +106,8 @@ public abstract class AbstractJmClient implements JmClient {
             }
             // 对图片进行解密
             return JmImageTool.decryptImage(jmResponse.getContent(), image);
-        } catch (ApiResponseException e) {
-            throw new ApiResponseException("Failed to fetch image: " + e.getMessage());
+        } catch (ResponseException e) {
+            throw new ResponseException("Failed to fetch image: " + e.getMessage());
         } catch (NetworkException e) {
             throw new NetworkException("Failed to fetch image due to I/O error", e);
         }
@@ -375,7 +375,7 @@ public abstract class AbstractJmClient implements JmClient {
      * @param request 请求对象
      * @return 通用禁漫响应类
      */
-    public JmResponse executeRequest(Request request) throws ApiResponseException, NetworkException {
+    public JmResponse executeRequest(Request request) throws ResponseException, NetworkException {
         try (Response response = httpClient.newCall(request).execute()) {
             JmResponse jmResponse = new JmResponse(response);
             jmResponse.requireSuccess();

@@ -7,21 +7,21 @@ package io.github.jukomu.jmcomic.api.exception;
  * @Project: jmcomic-api-java
  * @Date: 2025/10/28
  */
-public class ApiResponseException extends JmComicException {
+public class ResponseException extends JmComicException {
 
     private final int errorCode; // 可选的错误码
 
-    public ApiResponseException(String message) {
+    public ResponseException(String message) {
         super(message);
         this.errorCode = -1; // -1 表示没有特定的错误码
     }
 
-    public ApiResponseException(String message, Throwable cause) {
+    public ResponseException(String message, Throwable cause) {
         super(message, cause);
         this.errorCode = -1; // -1 表示没有特定的错误码
     }
 
-    public ApiResponseException(String message, int errorCode) {
+    public ResponseException(String message, int errorCode) {
         super(message);
         this.errorCode = errorCode;
     }

@@ -46,6 +46,10 @@ public final class JmCryptoTool {
      * @return 解密后的JSON字符串
      */
     public static String decryptApiResponse(String encryptedData, String timestamp, String secret) {
+        if ("".equals(encryptedData) || "[]".equals(encryptedData) || encryptedData == null) {
+            // 无需解密即可判断本子不存在
+            return "{\"id\":-1,\"name\":null,\"images\":[],\"addtime\":null,\"description\":\"\",\"total_views\":null,\"likes\":null,\"series\":[],\"series_id\":null,\"comment_total\":\"0\",\"author\":[\"\"],\"tags\":[\"\"],\"works\":[],\"actors\":[],\"related_list\":[],\"liked\":false,\"is_favorite\":false,\"is_aids\":false,\"price\":\"\",\"purchased\":\"\"}";
+        }
         try {
             // 1. 生成AES密钥
             byte[] key = md5Hex(timestamp + secret).getBytes(StandardCharsets.UTF_8);

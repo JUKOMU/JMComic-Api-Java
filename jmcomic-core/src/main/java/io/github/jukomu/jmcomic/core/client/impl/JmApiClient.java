@@ -291,7 +291,7 @@ public final class JmApiClient extends AbstractJmClient {
             }
 
             return userInfo;
-        } catch (ApiResponseException e) {
+        } catch (ResponseException e) {
             logger.error("Failed to login with error message :{}", e.getMessage());
             throw e;
         } catch (Exception e) {
@@ -337,7 +337,7 @@ public final class JmApiClient extends AbstractJmClient {
                 if (jsonObject.has("msg") && !jsonObject.get("msg").isJsonNull()) {
                     msg = jsonObject.get("msg").getAsString();
                 }
-                throw new ApiResponseException("Failed to add to favorites: " + msg);
+                throw new ResponseException("Failed to add to favorites: " + msg);
             }
         } catch (Exception e) {
             throw new ParseResponseException("Failed to parse 'add to favorite' response", e);
