@@ -63,7 +63,7 @@ public final class JmConstants {
     ));
 
     public static final String JM_REDIRECT_URL = PROTOCOL_HTTPS + "jm365.work/3YeBdF";
-    public static final String JM_PUB_URL = PROTOCOL_HTTPS + "jmcomic-fb.vip";
+    public static final String JM_PUB_URL = PROTOCOL_HTTPS + "jmcomicne.net/";
 
     // == 默认 User-Agent ==
     public static final String DEFAULT_USER_AGENT_API = "Mozilla/5.0 (Linux; Android 9; V1938CT Build/PQ3A.190705.11211812; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/91.0.4472.114 Safari/537.36";
