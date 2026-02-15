@@ -1,7 +1,7 @@
 package io.github.jukomu.jmcomic.core.net.model;
 
-import io.github.jukomu.jmcomic.api.exception.ResponseException;
 import io.github.jukomu.jmcomic.api.exception.ResourceNotFoundException;
+import io.github.jukomu.jmcomic.api.exception.ResponseException;
 import okhttp3.Response;
 
 /**

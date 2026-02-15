@@ -391,7 +391,7 @@ public final class HtmlParser {
         int totalPages = (totalItems == 0) ? 0 : (int) Math.ceil((double) totalItems / JmConstants.PAGE_SIZE_SEARCH);
 
         // 选择所有本子卡片
-        Elements albumCards = doc.select("div.row > div.col-lg-3.col-md-4.col-sm-6.thumb-overlay-albums");
+        Elements albumCards = doc.select("div.thumb-overlay");
 
         List<JmAlbumMeta> content = albumCards.stream()
                 .map(HtmlParser::parseAlbumCard)
@@ -401,12 +401,14 @@ public final class HtmlParser {
     }
 
     private static JmAlbumMeta parseAlbumCard(Element card) {
-        Element link = card.selectFirst("a");
+        Element parent = card.parent();
+        Element link = parent.selectFirst("div.thumb-overlay").selectFirst("a");
+        Element img = link.selectFirst("img");
         String id = extractIdFromUrl(link.attr("href"));
-        String title = link.attr("title");
-        Element authorElement = card.selectFirst("div.title-truncate");
+        String title = img.attr("title");
+        Element authorElement = parent.selectFirst("div[class=title-truncate]");
         List<String> authors = (authorElement != null) ? List.of(authorElement.text()) : List.of();
-        List<String> tags = ParseHelper.selectAllText(card, "div.tags a");
+        List<String> tags = ParseHelper.selectAllText(parent, "div.tags a");
 
         return new JmAlbumMeta(id, title, authors, tags);
     }

@@ -228,9 +228,8 @@ public final class JmHtmlClient extends AbstractJmClient {
                 .add("submit_login", "")
                 .build();
 
-        // 禁止重定向
         try {
-            JmHtmlResponse jmHtmlResponse = executePostRequest(url, formBody, false);
+            JmHtmlResponse jmHtmlResponse = executePostRequest(url, formBody);
             super.cacheUsername(username);
             // TODO 获取用户信息
             return JmUserInfo.partial(username);

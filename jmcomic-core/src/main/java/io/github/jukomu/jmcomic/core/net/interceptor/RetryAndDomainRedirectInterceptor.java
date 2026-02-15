@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author JUKOMU
@@ -63,7 +64,7 @@ public final class RetryAndDomainRedirectInterceptor implements Interceptor {
             }
 
             try {
-                Response response = chain.proceed(requestToProceed);
+                Response response = chain.withConnectTimeout(5, TimeUnit.SECONDS).proceed(requestToProceed);
 
                 if (response.isSuccessful()) {
                     domainManager.reportSuccess(currentHost);
