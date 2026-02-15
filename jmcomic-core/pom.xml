@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.jukomu</groupId>
         <artifactId>jmcomic-api-java</artifactId>
-        <version>0.0.2</version>
+        <version>0.0.3</version>
     </parent>
 
     <artifactId>jmcomic-core</artifactId>
@@ -82,6 +82,12 @@
             <artifactId>junit-jupiter-params</artifactId>
             <scope>test</scope>
         </dependency>
+<!--        <dependency>-->
+<!--            <groupId>io.github.jukomu</groupId>-->
+<!--            <artifactId>jmcomic-desktop-support</artifactId>-->
+<!--            <version>0.0.2</version>-->
+<!--            <scope>test</scope>-->
+<!--        </dependency>-->
     </dependencies>
 
 </project>
