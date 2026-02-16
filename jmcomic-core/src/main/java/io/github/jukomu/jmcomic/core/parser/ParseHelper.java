@@ -5,6 +5,7 @@ import org.jsoup.nodes.Element;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -66,7 +67,7 @@ public final class ParseHelper {
                 .orElse(null);
     }
 
-    static int parseIntOrDefault(String text, java.util.function.Supplier<String> fallbackSupplier) {
+    static int parseIntOrDefault(String text, Supplier<String> fallbackSupplier) {
         String primaryText = text;
         // 如果主文本为空，则尝试从备用源获取
         if (primaryText == null || primaryText.isEmpty() || primaryText.replaceAll("[^0-9]", "").isEmpty()) {

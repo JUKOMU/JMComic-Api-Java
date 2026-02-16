@@ -32,7 +32,7 @@ public final class JmConstants {
     public static final String APP_TOKEN_SECRET_2 = "18comicAPPContent"; // 用于特殊接口
     public static final String APP_DATA_SECRET = "185Hcomic3PAPP7R";
     public static final String API_DOMAIN_SERVER_SECRET = "diosfjckwpqpdfjkvnqQjsik";
-    public static String APP_VERSION = "2.0.6";
+    public static String APP_VERSION = "2.0.18";
 
     // == 图片分割算法关键版本号 ==
     public static final int SCRAMBLE_220980 = 220980;
@@ -40,7 +40,7 @@ public final class JmConstants {
     public static final int SCRAMBLE_421926 = 421926;
 
     // == 域名 ==
-    public static final List<String> DEFAULT_API_DOMAINS = Collections.unmodifiableList(List.of(
+    public static List<String> DEFAULT_API_DOMAINS = Collections.unmodifiableList(List.of(
             "www.cdnaspa.vip",
             "www.cdnaspa.club",
             "www.cdnplaystation6.org",
@@ -48,7 +48,7 @@ public final class JmConstants {
             "www.cdnplaystation6.cc"
     ));
 
-    public static final List<String> DEFAULT_IMAGE_DOMAINS = Collections.unmodifiableList(List.of(
+    public static List<String> DEFAULT_IMAGE_DOMAINS = Collections.unmodifiableList(List.of(
             "cdn-msp.jmapiproxy1.cc",
             "cdn-msp.jmapiproxy2.cc",
             "cdn-msp2.jmapiproxy2.cc",

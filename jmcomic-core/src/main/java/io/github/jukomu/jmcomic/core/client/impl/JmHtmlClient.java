@@ -40,7 +40,7 @@ public final class JmHtmlClient extends AbstractJmClient {
 
     @Override
     protected void initialize() {
-        updateDomains();
+//        updateDomains();
     }
 
     @Override

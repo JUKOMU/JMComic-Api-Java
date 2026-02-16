@@ -42,7 +42,7 @@ public final class JmApiClient extends AbstractJmClient {
 
     @Override
     protected void initialize() {
-        updateDomains();
+        updateSetting();
     }
 
     @Override
@@ -80,6 +80,66 @@ public final class JmApiClient extends AbstractJmClient {
         if (!success) {
             logger.error("获取最新域名列表失败。");
         }
+    }
+
+    /**
+     * 更新API客户端配置
+     */
+    private void updateSetting() {
+        logger.info("开始获取最新API客户端设置");
+        Map setting = setting();
+        String jm3Version = (String) setting.getOrDefault("jm3_version", null);
+        String imgHost = (String) setting.getOrDefault("img_host", null);
+        if (compareVersion(jm3Version, JmConstants.APP_VERSION) > 0) {
+            logger.info("当前API客户端版本[{}]，更新API客户端版本[{}] -> [{}]", JmConstants.APP_VERSION, JmConstants.APP_VERSION, jm3Version);
+            JmConstants.APP_VERSION = jm3Version;
+        } else {
+            logger.info("当前API客户端版本[{}]，更新API客户端版本[{}] -> [{}]", JmConstants.APP_VERSION, JmConstants.APP_VERSION, JmConstants.APP_VERSION);
+        }
+
+        if (imgHost != null) {
+            JmConstants.DEFAULT_IMAGE_DOMAINS.add(imgHost);
+        }
+    }
+
+    /**
+     * 比较两个版本号
+     *
+     * @param v1 版本号1
+     * @param v2 版本号2
+     * @return 如果 v1 > v2 返回 1，如果 v1 < v2 返回 -1，相等返回 0
+     */
+    private static int compareVersion(String v1, String v2) {
+        if (v1 == null && v2 == null) {
+            return 0;
+        }
+
+        if (v1 == null) {
+            return -1;
+        }
+
+        if (v2 == null) {
+            return 1;
+        }
+
+        String[] parts1 = v1.split("\\.");
+        String[] parts2 = v2.split("\\.");
+
+        int length = Math.max(parts1.length, parts2.length);
+
+        for (int i = 0; i < length; i++) {
+            // 获取每一段的数值，如果超出数组范围，则默认为 0
+            int num1 = (i < parts1.length) ? Integer.parseInt(parts1[i]) : 0;
+            int num2 = (i < parts2.length) ? Integer.parseInt(parts2[i]) : 0;
+
+            if (num1 > num2) {
+                return 1;
+            } else if (num1 < num2) {
+                return -1;
+            }
+        }
+
+        return 0;
     }
 
     /**

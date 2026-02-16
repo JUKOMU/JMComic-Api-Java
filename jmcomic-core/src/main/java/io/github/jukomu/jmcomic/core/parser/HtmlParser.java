@@ -492,7 +492,7 @@ public final class HtmlParser {
 
             // 提取 Title
             String title = "";
-            Element titleElement = albumDiv.selectFirst(".video-title");
+            Element titleElement = albumDiv.selectFirst(".title-truncate");
 
             if (titleElement != null) {
                 title = titleElement.text().trim();
