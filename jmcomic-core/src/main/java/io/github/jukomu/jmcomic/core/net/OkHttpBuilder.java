@@ -3,6 +3,7 @@ package io.github.jukomu.jmcomic.core.net;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
 import io.github.jukomu.jmcomic.core.config.JmConfiguration;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
+import io.github.jukomu.jmcomic.core.net.interceptor.CloudflareInterceptor;
 import io.github.jukomu.jmcomic.core.net.interceptor.RetryAndDomainRedirectInterceptor;
 import io.github.jukomu.jmcomic.core.net.interceptor.UserAgentInterceptor;
 import io.github.jukomu.jmcomic.core.net.provider.JmDomainManager;
@@ -57,6 +58,11 @@ public final class OkHttpBuilder {
         builder.cookieJar(cookieJar);
 
         builder.addInterceptor(new RetryAndDomainRedirectInterceptor(config.getRetryTimes(), domainManager));
+
+        if (config.getChallengeSolver() != null) {
+            builder.addInterceptor(new CloudflareInterceptor(config.getChallengeSolver()));
+        }
+
         builder.retryOnConnectionFailure(false);
         OkHttpClient client = builder.build();
 

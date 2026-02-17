@@ -1,6 +1,7 @@
 package io.github.jukomu.jmcomic.core.config;
 
 import io.github.jukomu.jmcomic.api.enums.ClientType;
+import io.github.jukomu.jmcomic.api.net.CloudflareChallengeSolver;
 import io.github.jukomu.jmcomic.core.cache.CacheKey;
 import io.github.jukomu.jmcomic.core.cache.CachePool;
 
@@ -45,6 +46,8 @@ public final class JmConfiguration {
     private final int concurrentPhotoDownloads;
     // 同时下载的图片数
     private final int concurrentImageDownloads;
+    // Cloudflare 验证
+    private final CloudflareChallengeSolver challengeSolver;
 
     private JmConfiguration(Builder builder) {
         this.clientType = builder.clientType;
@@ -59,6 +62,7 @@ public final class JmConfiguration {
         this.cachePool = new CachePool<>(builder.cacheSize);
         this.concurrentPhotoDownloads = builder.concurrentPhotoDownloads;
         this.concurrentImageDownloads = builder.concurrentImageDownloads;
+        this.challengeSolver = builder.challengeSolver;
     }
 
     // Getters for all fields
@@ -110,6 +114,10 @@ public final class JmConfiguration {
         return concurrentImageDownloads;
     }
 
+    public CloudflareChallengeSolver getChallengeSolver() {
+        return challengeSolver;
+    }
+
     /**
      * 用于创建 JmConfiguration 实例的 Builder
      */
@@ -126,6 +134,7 @@ public final class JmConfiguration {
         private int cacheSize = 100 * 1024 * 1024;
         private int concurrentPhotoDownloads = 3;
         private int concurrentImageDownloads = 20;
+        private CloudflareChallengeSolver challengeSolver;
 
         public Builder clientType(ClientType type) {
             this.clientType = Objects.requireNonNull(type);
@@ -194,6 +203,11 @@ public final class JmConfiguration {
         public Builder concurrentImageDownloads(int size) {
             if (size < 0) throw new IllegalArgumentException("Concurrent image uploads must be non-negative.");
             this.concurrentImageDownloads = size;
+            return this;
+        }
+
+        public Builder challengeSolver(CloudflareChallengeSolver solver) {
+            this.challengeSolver = solver;
             return this;
         }
 
