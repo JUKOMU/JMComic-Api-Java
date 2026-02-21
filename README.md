@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="./README_en.md">English</a>
+  <span>&nbsp;</span>
+  <strong>English</strong>
+</p>
+
 # Java API For JMComic (禁漫天堂)
 
 ![Java](https://img.shields.io/badge/Java-17+-blue.svg)
