@@ -78,26 +78,29 @@ The core of this project is a **data acquisition and management tool**, rather t
 
 ## Installation
 
-This project has not yet been published to the Maven Central Repository. You can use it locally via the following methods:
-
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/jukomu/jmcomic-api-java.git
-   cd jmcomic-api-java
-   ```
-
-2. Install it in your local Maven repository:
-   ```bash
-   mvn clean install
-   ```
-
-3. Add the dependency to your `pom.xml` file:
+* Install jmcomic-api
    ```xml
-   <dependency>
-       <groupId>io.github.jukomu</groupId>
-       <artifactId>jmcomic-core</artifactId>
-       <version>xxx</version> <!-- TO DO: Confirm current project version -->
-   </dependency>
+    <dependency>
+        <groupId>io.github.jukomu</groupId>
+        <artifactId>jmcomic-api</artifactId>
+        <version>0.0.4</version>
+    </dependency>
+   ```
+* Install jmcomic-core
+   ```xml
+    <dependency>
+        <groupId>io.github.jukomu</groupId>
+        <artifactId>jmcomic-core</artifactId>
+        <version>0.0.4</version>
+    </dependency>
+   ```
+* (Android platform) Install jmcomic-android-support
+   ```xml
+    <dependency>
+        <groupId>io.github.jukomu</groupId>
+        <artifactId>jmcomic-android-support</artifactId>
+        <version>0.0.4</version>
+    </dependency>
    ```
 
 ---
