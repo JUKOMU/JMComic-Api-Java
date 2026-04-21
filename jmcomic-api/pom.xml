@@ -6,10 +6,14 @@
     <parent>
         <groupId>io.github.jukomu</groupId>
         <artifactId>jmcomic-api-java</artifactId>
-        <version>0.0.3</version>
+        <version>0.0.4</version>
     </parent>
 
     <artifactId>jmcomic-api</artifactId>
     <packaging>jar</packaging>
+
+    <name>jmcomic-api</name>
+    <description>Public API module for JMComic API for Java.</description>
+    <url>https://github.com/JUKOMU/JMComic-Api-Java</url>
 
 </project>

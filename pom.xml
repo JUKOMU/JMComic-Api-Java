@@ -6,19 +6,19 @@
 
     <groupId>io.github.jukomu</groupId>
     <artifactId>jmcomic-api-java</artifactId>
-    <version>0.0.3</version>
+    <version>0.0.4</version>
     <packaging>pom</packaging>
     <modules>
         <module>jmcomic-api</module>
         <module>jmcomic-core</module>
-        <module>jmcomic-sample</module>
+<!--        <module>jmcomic-sample</module>-->
         <module>jmcomic-android-support</module>
 <!--        <module>jmcomic-desktop-support</module>-->
     </modules>
 
     <name>JMComic API for Java</name>
     <description>A Java library to fetch data from JMComic server.</description>
-    <url>https://github.com/JUKOMU/JMComic-Api-Java.git</url>
+    <url>https://github.com/JUKOMU/JMComic-Api-Java</url>
 
     <licenses>
         <license>
@@ -27,6 +27,21 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
+
+    <developers>
+        <developer>
+            <id>jukomu</id>
+            <name>JUKOMU</name>
+            <url>https://github.com/JUKOMU</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/JUKOMU/JMComic-Api-Java.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/JUKOMU/JMComic-Api-Java.git</developerConnection>
+        <url>https://github.com/JUKOMU/JMComic-Api-Java</url>
+        <tag>HEAD</tag>
+    </scm>
 
     <properties>
         <java.version>17</java.version>
@@ -209,6 +224,32 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
                 <version>${maven.source.plugin.version}</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.9.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>false</autoPublish>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>3.2.8</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

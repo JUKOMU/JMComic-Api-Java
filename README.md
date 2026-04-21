@@ -79,28 +79,30 @@ changes in future versions.
 
 ## 安装 (Installation)
 
-本项目尚未发布到Maven中央仓库。您可以通过以下方式在本地使用：
-
-1. 克隆本仓库:
-   ```bash
-   git clone https://github.com/jukomu/jmcomic-api-java.git
-   cd jmcomic-api-java
-   ```
-
-2. 在本地Maven仓库中安装:
-   ```bash
-   mvn clean install
-   ```
-
-3. 在您的 `pom.xml` 文件中添加依赖:
+* 安装 jmcomic-api
    ```xml
-   <dependency>
-       <groupId>io.github.jukomu</groupId>
-       <artifactId>jmcomic-core</artifactId>
-       <version>xxx</version> <!-- TO DO: 确认当前项目版本 -->
-   </dependency>
+    <dependency>
+        <groupId>io.github.jukomu</groupId>
+        <artifactId>jmcomic-api</artifactId>
+        <version>0.0.4</version>
+    </dependency>
    ```
-
+* 安装 jmcomic-core
+   ```xml
+    <dependency>
+        <groupId>io.github.jukomu</groupId>
+        <artifactId>jmcomic-core</artifactId>
+        <version>0.0.4</version>
+    </dependency>
+   ```
+* Android平台额外安装 jmcomic-android-support
+   ```xml
+    <dependency>
+        <groupId>io.github.jukomu</groupId>
+        <artifactId>jmcomic-android-support</artifactId>
+        <version>0.0.4</version>
+    </dependency>
+   ```
 ---
 
 ## 快速上手 (Quick Start)

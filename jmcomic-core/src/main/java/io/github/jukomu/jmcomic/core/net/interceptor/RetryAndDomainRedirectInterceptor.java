@@ -80,6 +80,15 @@ public final class RetryAndDomainRedirectInterceptor implements Interceptor {
                     continue;
                 }
 
+                // 403错误，报告失败，关闭响应，然后继续循环重试
+                if (response.code() == 403) {
+                    domainManager.reportFailure(currentHost);
+                    response.close();
+                    lastException = new IOException("Server error: " + response.code() + " for host " + currentHost);
+                    logger.warn("Request to {} failed with server error: {}", requestUrl, response.code());
+                    continue;
+                }
+
                 // 其他非成功响应 (4xx, 3xx)，不重试，直接返回
                 logger.error("Request to {} failed with client error: {}. No retry will be attempted.", requestUrl, response.code());
                 return response;

@@ -1,6 +1,7 @@
 package io.github.jukomu.jmcomic.core.net.model;
 
 import com.google.gson.JsonParseException;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import io.github.jukomu.jmcomic.core.util.JsonUtils;
 import okhttp3.Response;
@@ -206,8 +207,14 @@ public class CommonResponse {
         if (text == null || text.isEmpty()) {
             return Collections.emptyMap();
         }
-        return JsonUtils.getGson().fromJson(text, new TypeToken<Map<String, Object>>() {
-        }.getType());
+        Map<String, Object> json;
+        try {
+            json = JsonUtils.getGson().fromJson(text, new TypeToken<Map<String, Object>>() {
+            }.getType());
+        } catch (JsonSyntaxException e) {
+            throw new JsonSyntaxException(text, e);
+        }
+        return json;
     }
 
     /**
