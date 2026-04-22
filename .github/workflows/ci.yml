@@ -32,7 +32,7 @@ jobs:
                     cache: maven
 
             -   name: Build & Test (all modules)
-                run: mvn -B -ntp clean verify
+                run: mvn -B -ntp -Dgpg.skip=true clean verify
 
             -   name: Upload test reports
                 if: always()
