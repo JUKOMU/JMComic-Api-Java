@@ -10,48 +10,30 @@ import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
 import io.github.jukomu.jmcomic.core.config.JmConfiguration;
 
 /**
- * @author JUKOMU
- * @Description: 演示如何获取JMComic各种核心数据实体的示例代码
- * @Project: jmcomic-api-java
- * @Date: 2025/11/3
+ * 演示如何获取 JMComic 各种核心数据实体的示例代码。
  */
 public class FetchDataSample {
-    private static AbstractJmClient client;
 
-    static {
+    public static void main(String[] args) {
         JmConfiguration config = new JmConfiguration.Builder()
                 .clientType(ClientType.API)
                 .build();
-        client = JmComic.newApiClient(config);
-    }
 
-    public static void main(String[] args) {
-        try {
-            System.out.println("--- Running Fetch Album Details Sample ---");
-            fetchAlbumDetails("540709");
+        try (AbstractJmClient client = JmComic.newApiClient(config)) {
 
-            System.out.println("\n--- Running Fetch Photo Details Sample ---");
-            fetchPhotoDetails("1064001");
+            System.out.println("--- 获取本子详情 ---");
+            fetchAlbumDetails(client, "540709");
 
-            System.out.println("\n--- Running Search Sample ---");
-            searchAlbums("NTR");
+            System.out.println("\n--- 获取章节详情 ---");
+            fetchPhotoDetails(client, "1064001");
 
-            // ... 调用其他示例方法
+            System.out.println("\n--- 搜索本子 ---");
+            searchAlbums(client, "NTR");
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            // 在所有示例运行完毕后关闭客户端
-            if (client != null) {
-                client.close();
-            }
         }
     }
 
-    /**
-     * 示例 1: 获取单个本子 (JmAlbum) 的详细信息
-     */
-    public static void fetchAlbumDetails(String albumId) {
+    private static void fetchAlbumDetails(AbstractJmClient client, String albumId) {
         System.out.println("Fetching album with ID: " + albumId);
         JmAlbum album = client.getAlbum(albumId);
         System.out.println("Success! Title: " + album.title());
@@ -59,10 +41,7 @@ public class FetchDataSample {
         System.out.println("Photo count: " + album.photoMetas().size());
     }
 
-    /**
-     * 示例 2: 获取单个章节 (JmPhoto) 的详细信息
-     */
-    public static void fetchPhotoDetails(String photoId) {
+    private static void fetchPhotoDetails(AbstractJmClient client, String photoId) {
         System.out.println("Fetching photo with ID: " + photoId);
         JmPhoto photo = client.getPhoto(photoId);
         System.out.println("Success! Title: " + photo.title());
@@ -70,10 +49,7 @@ public class FetchDataSample {
         System.out.println("First image URL: " + photo.images().get(0).getDownloadUrl());
     }
 
-    /**
-     * 示例 3: 执行一次搜索 (JmSearchPage)
-     */
-    public static void searchAlbums(String keyword) {
+    private static void searchAlbums(AbstractJmClient client, String keyword) {
         System.out.println("Searching for keyword: " + keyword);
         SearchQuery query = new SearchQuery.Builder().text(keyword).page(1).build();
         JmSearchPage searchPage = client.search(query);
@@ -82,14 +58,5 @@ public class FetchDataSample {
         searchPage.content().forEach(albumMeta -> {
             System.out.printf("  - [ID: %s] %s%n", albumMeta.id(), albumMeta.title());
         });
-    }
-
-    /**
-     * 示例 4: 获取收藏夹 (需要登录)
-     */
-    public static void fetchFavorites() {
-        // ... (登录逻辑)
-        // JmFavoritePage favPage = client.getFavorites(1);
-        // ...
     }
 }
