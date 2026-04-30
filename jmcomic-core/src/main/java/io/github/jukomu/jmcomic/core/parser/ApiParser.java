@@ -10,6 +10,7 @@ import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
 import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Entities;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -1102,6 +1103,737 @@ public final class ApiParser {
             throw new ParseResponseException("Failed to parse vote result API JSON", e);
         }
     }
+
+    // == 小说子系统解析 ==
+
+    /**
+     * 解析小说列表/搜索的API JSON响应
+     */
+    public static JmNovelPage parseNovelPage(String json) {
+        try {
+            JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
+
+            int total = 0;
+            if (jsonObject.has("total") && !jsonObject.get("total").isJsonNull()) {
+                total = jsonObject.get("total").getAsInt();
+            }
+
+            JsonArray listArray = jsonObject.has("list") && jsonObject.get("list").isJsonArray()
+                    ? jsonObject.getAsJsonArray("list")
+                    : new JsonArray();
+            List<JmNovelMeta> list = parseNovelMetaList(listArray);
+
+            return new JmNovelPage(total, list);
+        } catch (Exception e) {
+            throw new ParseResponseException("Failed to parse novel page API JSON", e);
+        }
+    }
+
+    private static List<JmNovelMeta> parseNovelMetaList(JsonArray array) {
+        if (array == null || array.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<JmNovelMeta> results = new ArrayList<>();
+        for (JsonElement item : array) {
+            JsonObject node = item.getAsJsonObject();
+
+            String id = "";
+            if (node.has("id") && !node.get("id").isJsonNull()) {
+                id = node.get("id").getAsString();
+            }
+
+            String name = "";
+            if (node.has("name") && !node.get("name").isJsonNull()) {
+                name = node.get("name").getAsString();
+            }
+
+            String author = "";
+            if (node.has("author") && !node.get("author").isJsonNull()) {
+                author = node.get("author").getAsString();
+            }
+
+            String image = "";
+            if (node.has("image") && !node.get("image").isJsonNull()) {
+                image = node.get("image").getAsString();
+            }
+
+            boolean liked = false;
+            if (node.has("liked") && !node.get("liked").isJsonNull()) {
+                liked = node.get("liked").getAsBoolean();
+            }
+
+            Boolean isFavorite = null;
+            if (node.has("is_favorite") && !node.get("is_favorite").isJsonNull()) {
+                isFavorite = node.get("is_favorite").getAsBoolean();
+            }
+
+            long updateAt = 0L;
+            if (node.has("update_at") && !node.get("update_at").isJsonNull()) {
+                updateAt = node.get("update_at").getAsLong();
+            }
+
+            String likes = "0";
+            if (node.has("likes") && !node.get("likes").isJsonNull()) {
+                likes = node.get("likes").getAsString();
+            }
+
+            String lastChapterIndex = "";
+            if (node.has("last_chapter_index") && !node.get("last_chapter_index").isJsonNull()) {
+                lastChapterIndex = node.get("last_chapter_index").getAsString();
+            }
+
+            String lastChapterTitle = "";
+            if (node.has("last_chapter_title") && !node.get("last_chapter_title").isJsonNull()) {
+                lastChapterTitle = node.get("last_chapter_title").getAsString();
+            }
+
+            results.add(new JmNovelMeta(id, name, author, image, liked, isFavorite, updateAt, likes, lastChapterIndex, lastChapterTitle));
+        }
+        return results;
+    }
+
+    /**
+     * 解析小说收藏夹列表的API JSON响应
+     */
+    public static JmNovelFavoritesPage parseNovelFavoritesPage(String json) {
+        try {
+            JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
+
+            int count = 0;
+            if (jsonObject.has("count") && !jsonObject.get("count").isJsonNull()) {
+                count = jsonObject.get("count").getAsInt();
+            }
+
+            int total = 0;
+            if (jsonObject.has("total") && !jsonObject.get("total").isJsonNull()) {
+                total = jsonObject.get("total").getAsInt();
+            }
+
+            JsonArray listArray = jsonObject.has("list") && jsonObject.get("list").isJsonArray()
+                    ? jsonObject.getAsJsonArray("list")
+                    : new JsonArray();
+            List<JmNovelMeta> list = parseNovelMetaList(listArray);
+
+            List<Map<String, String>> folderList = new ArrayList<>();
+            if (jsonObject.has("folder_list") && jsonObject.get("folder_list").isJsonArray()) {
+                for (JsonElement item : jsonObject.getAsJsonArray("folder_list")) {
+                    JsonObject node = item.getAsJsonObject();
+                    Map<String, String> folder = new HashMap<>();
+                    for (Map.Entry<String, JsonElement> entry : node.entrySet()) {
+                        folder.put(entry.getKey(), entry.getValue().getAsString());
+                    }
+                    folderList.add(folder);
+                }
+            }
+
+            return new JmNovelFavoritesPage(list, folderList, count, total);
+        } catch (Exception e) {
+            throw new ParseResponseException("Failed to parse novel favorites page API JSON", e);
+        }
+    }
+
+    // == 小说详情解析 ==
+
+    /**
+     * 解析小说详情的API JSON响应
+     *
+     * @param json API返回的JSON字符串
+     * @return 一个 JmNovelDetail 对象
+     */
+    public static JmNovelDetail parseNovelDetail(String json) {
+        try {
+            JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
+
+            String id = optString(jsonObject, "id", "");
+            String seriesId = optString(jsonObject, "series_id", "");
+            String name = optString(jsonObject, "name", "");
+            String images = optString(jsonObject, "images", "");
+            long addtime = 0L;
+            if (jsonObject.has("addtime") && !jsonObject.get("addtime").isJsonNull()) {
+                addtime = jsonObject.get("addtime").getAsLong();
+            }
+            String description = optString(jsonObject, "description", "");
+            String totalViews = optString(jsonObject, "total_views", "0");
+            String likes = optString(jsonObject, "likes", "0");
+            String isEnd = optString(jsonObject, "is_end", "0");
+            String serialStatus = optString(jsonObject, "serial_status", "");
+            String author = optString(jsonObject, "author", "");
+
+            // 解析 tags
+            List<String> tags = new ArrayList<>();
+            if (jsonObject.has("tags") && jsonObject.get("tags").isJsonArray()) {
+                for (JsonElement item : jsonObject.getAsJsonArray("tags")) {
+                    tags.add(item.getAsString());
+                }
+            }
+
+            boolean liked = false;
+            if (jsonObject.has("liked") && !jsonObject.get("liked").isJsonNull()) {
+                liked = jsonObject.get("liked").getAsBoolean();
+            }
+
+            Boolean isFavorite = null;
+            if (jsonObject.has("is_favorite") && !jsonObject.get("is_favorite").isJsonNull()) {
+                isFavorite = jsonObject.get("is_favorite").getAsBoolean();
+            }
+
+            // 解析 series（章节列表）
+            JsonArray seriesArray = jsonObject.has("series") && jsonObject.get("series").isJsonArray()
+                    ? jsonObject.getAsJsonArray("series")
+                    : new JsonArray();
+            List<JmNovelChapterMeta> series = parseNovelChapterMetaList(seriesArray);
+
+            // 解析 related_list（相关小说）
+            JsonArray relatedArray = jsonObject.has("related_list") && jsonObject.get("related_list").isJsonArray()
+                    ? jsonObject.getAsJsonArray("related_list")
+                    : new JsonArray();
+            List<JmRelatedNovel> relatedList = parseRelatedNovelList(relatedArray);
+
+            // 解析 comment_total（评论列表）
+            JsonArray commentArray = jsonObject.has("comment_total") && jsonObject.get("comment_total").isJsonArray()
+                    ? jsonObject.getAsJsonArray("comment_total")
+                    : new JsonArray();
+            List<JmNovelComment> commentTotal = parseNovelCommentList(commentArray);
+
+            return new JmNovelDetail(
+                    id, seriesId, name, images, addtime, description,
+                    totalViews, likes, isEnd, serialStatus, author,
+                    tags, liked, isFavorite, series, relatedList, commentTotal
+            );
+        } catch (Exception e) {
+            throw new ParseResponseException("Failed to parse novel detail API JSON", e);
+        }
+    }
+
+    /**
+     * 解析小说章节内容的API JSON响应
+     *
+     * @param json API返回的JSON字符串
+     * @return 一个 JmNovelChapter 对象
+     */
+    public static JmNovelChapter parseNovelChapter(String json) {
+        try {
+            JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
+
+            long ncid = 0L;
+            if (jsonObject.has("ncid") && !jsonObject.get("ncid").isJsonNull()) {
+                ncid = jsonObject.get("ncid").getAsLong();
+            }
+
+            String nid = optString(jsonObject, "nid", "");
+            String name = optString(jsonObject, "name", "");
+            String title = optString(jsonObject, "title", "");
+            String content = optString(jsonObject, "content", "");
+
+            // 将HTML内容解码为纯文本，同时保留段落/换行结构
+            String contentText = "";
+            if (content != null && !content.isEmpty()) {
+                // 1. 块级标签的闭合标签 → 双换行（段落间隔）
+                String text = content
+                        .replaceAll("(?i)</(?:div|h[1-6]|p|ul|ol|li|blockquote|pre|section|article|header|footer|" +
+                                "table|tr|td|th|dl|dt|dd|figure|figcaption|main|nav|aside|" +
+                                "details|summary|fieldset)>", "\n\n");
+                // 2. 换行标签 → 单换行
+                text = text
+                        .replaceAll("(?i)<br\\s*/?>", "\n")
+                        .replaceAll("(?i)<hr\\s*/?>", "\n\n");
+                // 3. 去除剩余标签（包括块级开始标签等）
+                text = text.replaceAll("(?i)<[^>]+>", "");
+                // 4. 解码HTML实体（&hellip; → … 等）
+                text = Entities.unescape(text);
+                // 5. 合并过量的空行（3+ → 2）
+                text = text.replaceAll("\n{3,}", "\n\n").trim();
+                contentText = text;
+            }
+
+            String lastChapterTitle = optString(jsonObject, "last_chapter_title", "");
+            String totalFavorites = optString(jsonObject, "total_favorites", "0");
+            String totalViews = optString(jsonObject, "total_views", "0");
+            String totalLikes = optString(jsonObject, "total_likes", "0");
+            String addtime = optString(jsonObject, "addtime", "");
+            String adddt = optString(jsonObject, "adddt", "");
+
+            boolean liked = false;
+            if (jsonObject.has("liked") && !jsonObject.get("liked").isJsonNull()) {
+                liked = jsonObject.get("liked").getAsBoolean();
+            }
+
+            Boolean isFavorite = null;
+            if (jsonObject.has("is_favorite") && !jsonObject.get("is_favorite").isJsonNull()) {
+                isFavorite = jsonObject.get("is_favorite").getAsBoolean();
+            }
+
+            // 解析 related_list（相关小说）
+            JsonArray relatedArray = jsonObject.has("related_list") && jsonObject.get("related_list").isJsonArray()
+                    ? jsonObject.getAsJsonArray("related_list")
+                    : new JsonArray();
+            List<JmRelatedNovel> relatedList = parseRelatedNovelList(relatedArray);
+
+            return new JmNovelChapter(
+                    ncid, nid, name, title, content, contentText, lastChapterTitle,
+                    totalFavorites, totalViews, totalLikes, addtime, adddt,
+                    isFavorite, liked, relatedList
+            );
+        } catch (Exception e) {
+            throw new ParseResponseException("Failed to parse novel chapter API JSON", e);
+        }
+    }
+
+    /**
+     * 解析小说章节列表（series 字段）
+     */
+    private static List<JmNovelChapterMeta> parseNovelChapterMetaList(JsonArray array) {
+        if (array == null || array.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<JmNovelChapterMeta> results = new ArrayList<>();
+        for (JsonElement item : array) {
+            JsonObject node = item.getAsJsonObject();
+
+            String NCID = optString(node, "NCID", "");
+            String title = optString(node, "title", "");
+            String sort = optString(node, "sort", "");
+            String createdAt = optString(node, "created_at", "");
+            String status = optString(node, "status", "");
+            String onAt = optString(node, "on_at", "");
+            String buyNc = optString(node, "buy_nc", "0");
+            String isNeedBuyNc = optString(node, "is_need_buy_nc", "0");
+            String isNeedLogin = optString(node, "is_need_login", "0");
+            String id = optString(node, "id", "");
+            String name = optString(node, "name", "");
+
+            boolean isNew = false;
+            if (node.has("new") && !node.get("new").isJsonNull()) {
+                isNew = node.get("new").getAsBoolean();
+            }
+
+            boolean purchased = false;
+            if (node.has("purchased") && !node.get("purchased").isJsonNull()) {
+                purchased = node.get("purchased").getAsBoolean();
+            }
+
+            results.add(new JmNovelChapterMeta(
+                    NCID, title, sort, createdAt, status, onAt, buyNc,
+                    isNeedBuyNc, isNeedLogin, id, name, isNew, purchased
+            ));
+        }
+        return results;
+    }
+
+    /**
+     * 解析相关小说列表（related_list 字段）
+     */
+    private static List<JmRelatedNovel> parseRelatedNovelList(JsonArray array) {
+        if (array == null || array.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<JmRelatedNovel> results = new ArrayList<>();
+        for (JsonElement item : array) {
+            JsonObject node = item.getAsJsonObject();
+
+            String id = optString(node, "id", "");
+            String name = optString(node, "name", "");
+            String author = optString(node, "author", "");
+            // related_list 中 image 和 pic_s 都是封面URL，优先用 image
+            String image = optString(node, "image", "");
+            if (image.isEmpty()) {
+                image = optString(node, "pic_s", "");
+            }
+
+            long chapterUpdateAt = 0L;
+            if (node.has("chapter_update_at") && !node.get("chapter_update_at").isJsonNull()) {
+                chapterUpdateAt = node.get("chapter_update_at").getAsLong();
+            }
+
+            String updateAt = optString(node, "update_at", "");
+            String lastChapterIndex = optString(node, "last_chapter_index", "");
+            String lastChapterTitle = optString(node, "last_chapter_title", "");
+            String likes = optString(node, "likes", "0");
+
+            Boolean isFavorite = null;
+            if (node.has("is_favorite") && !node.get("is_favorite").isJsonNull()) {
+                isFavorite = node.get("is_favorite").getAsBoolean();
+            }
+
+            results.add(new JmRelatedNovel(
+                    id, name, author, image, chapterUpdateAt, updateAt,
+                    lastChapterIndex, lastChapterTitle, likes, isFavorite
+            ));
+        }
+        return results;
+    }
+
+    /**
+     * 解析小说评论列表（comment_total 字段）
+     */
+    private static List<JmNovelComment> parseNovelCommentList(JsonArray array) {
+        if (array == null || array.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<JmNovelComment> results = new ArrayList<>();
+        for (JsonElement item : array) {
+            JsonObject node = item.getAsJsonObject();
+
+            String commentId = optString(node, "CID", "");
+            String novelId = optString(node, "NID", "");
+            String chapterId = optString(node, "NCID", "");
+            String userId = optString(node, "UID", "");
+            String comment = optString(node, "comment", "");
+
+            long addtime = 0L;
+            if (node.has("addtime") && !node.get("addtime").isJsonNull()) {
+                addtime = node.get("addtime").getAsLong();
+            }
+
+            String likes = optString(node, "likes", "0");
+            String status = optString(node, "status", "");
+            String username = optString(node, "username", "");
+            String nickname = optString(node, "nickname", "");
+            String photo = optString(node, "photo", "");
+            String gender = optString(node, "gender", "");
+            String updateAt = optString(node, "update_at", "0");
+            String pinning = optString(node, "pinning", "0");
+            String contentHtml = optString(node, "content", "");
+            String spoiler = optString(node, "spoiler", "0");
+
+            results.add(new JmNovelComment(
+                    commentId, novelId, chapterId, userId, comment, addtime,
+                    likes, status, username, nickname, photo, gender,
+                    updateAt, pinning, contentHtml, spoiler
+            ));
+        }
+        return results;
+    }
+
+    // == 创作者子系统解析 ==
+
+    /**
+     * 解析创作者/作者列表的API JSON响应
+     */
+    public static JmCreatorPage parseCreatorPage(String json) {
+        try {
+            JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
+
+            int total = 0;
+            if (jsonObject.has("total") && !jsonObject.get("total").isJsonNull()) {
+                total = jsonObject.get("total").getAsInt();
+            }
+
+            JsonArray contentArray = jsonObject.has("content") && jsonObject.get("content").isJsonArray()
+                    ? jsonObject.getAsJsonArray("content")
+                    : new JsonArray();
+            List<JmCreatorMeta> list = parseCreatorMetaList(contentArray);
+
+            return new JmCreatorPage(total, list);
+        } catch (Exception e) {
+            throw new ParseResponseException("Failed to parse creator page API JSON", e);
+        }
+    }
+
+    private static List<JmCreatorMeta> parseCreatorMetaList(JsonArray array) {
+        if (array == null || array.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<JmCreatorMeta> results = new ArrayList<>();
+        for (JsonElement item : array) {
+            JsonObject node = item.getAsJsonObject();
+
+            String id = "";
+            if (node.has("id") && !node.get("id").isJsonNull()) {
+                id = node.get("id").getAsString();
+            }
+
+            String name = "";
+            if (node.has("author_name") && !node.get("author_name").isJsonNull()) {
+                name = node.get("author_name").getAsString();
+            } else if (node.has("name") && !node.get("name").isJsonNull()) {
+                name = node.get("name").getAsString();
+            }
+
+            String backgroundImage = "";
+            if (node.has("background_image") && !node.get("background_image").isJsonNull()) {
+                backgroundImage = node.get("background_image").getAsString();
+            }
+
+            String updateDate = "";
+            if (node.has("update_date") && !node.get("update_date").isJsonNull()) {
+                updateDate = node.get("update_date").getAsString();
+            }
+
+            String avatarImage = "";
+            if (node.has("author_avatar") && !node.get("author_avatar").isJsonNull()) {
+                avatarImage = node.get("author_avatar").getAsString();
+            }
+
+            results.add(new JmCreatorMeta(id, name, backgroundImage, updateDate, avatarImage));
+        }
+        return results;
+    }
+
+    /**
+     * 解析创作者作品列表的API JSON响应
+     */
+    public static JmCreatorWorkPage parseCreatorWorkPage(String json) {
+        try {
+            JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
+
+            int total = 0;
+            if (jsonObject.has("total") && !jsonObject.get("total").isJsonNull()) {
+                String totalStr = jsonObject.get("total").getAsString();
+                total = Integer.parseInt(totalStr);
+            }
+
+            JsonArray contentArray = jsonObject.has("content") && jsonObject.get("content").isJsonArray()
+                    ? jsonObject.getAsJsonArray("content")
+                    : new JsonArray();
+            List<JmCreatorWorkMeta> list = parseCreatorWorkMetaList(contentArray);
+
+            Map<String, Object> filters = new HashMap<>();
+            if (jsonObject.has("filters") && jsonObject.get("filters").isJsonObject()) {
+                JsonObject filtersObj = jsonObject.getAsJsonObject("filters");
+                for (Map.Entry<String, JsonElement> entry : filtersObj.entrySet()) {
+                    if (entry.getValue().isJsonArray()) {
+                        List<String> values = new ArrayList<>();
+                        for (JsonElement e : entry.getValue().getAsJsonArray()) {
+                            values.add(e.isJsonPrimitive() ? e.getAsString() : e.toString());
+                        }
+                        filters.put(entry.getKey(), values);
+                    } else if (entry.getValue().isJsonPrimitive()) {
+                        filters.put(entry.getKey(), entry.getValue().getAsString());
+                    } else {
+                        filters.put(entry.getKey(), entry.getValue().toString());
+                    }
+                }
+            }
+
+            return new JmCreatorWorkPage(total, list, filters);
+        } catch (Exception e) {
+            throw new ParseResponseException("Failed to parse creator work page API JSON", e);
+        }
+    }
+
+    /**
+     * 解析创作者个人作品列表页（作者详情 + 关联作品）的API JSON响应
+     *
+     * @param json API返回的JSON字符串（data层）
+     * @return JmCreatorAuthorWorksPage 对象
+     */
+    public static JmCreatorAuthorWorksPage parseCreatorAuthorWorksPage(String json) {
+        try {
+            JsonObject data = JsonParser.parseString(json).getAsJsonObject();
+
+            String workTitle = data.has("work_title") && !data.get("work_title").isJsonNull()
+                    ? data.get("work_title").getAsString() : "";
+            String authorName = data.has("author_name") && !data.get("author_name").isJsonNull()
+                    ? data.get("author_name").getAsString() : "";
+            String workDate = data.has("work_date") && !data.get("work_date").isJsonNull()
+                    ? data.get("work_date").getAsString() : "";
+            String authorAvatar = data.has("author_avatar") && !data.get("author_avatar").isJsonNull()
+                    ? data.get("author_avatar").getAsString() : "";
+            String backgroundImage = data.has("background_image") && !data.get("background_image").isJsonNull()
+                    ? data.get("background_image").getAsString() : "";
+
+            // 解析 sponsor 列表
+            List<JmCreatorSponsor> sponsors = new ArrayList<>();
+            if (data.has("sponsor") && data.get("sponsor").isJsonArray()) {
+                for (JsonElement item : data.getAsJsonArray("sponsor")) {
+                    JsonObject node = item.getAsJsonObject();
+                    String platformUrl = node.has("platform_url") && !node.get("platform_url").isJsonNull()
+                            ? node.get("platform_url").getAsString() : "";
+                    String platformName = node.has("platform_name") && !node.get("platform_name").isJsonNull()
+                            ? node.get("platform_name").getAsString() : "";
+                    sponsors.add(new JmCreatorSponsor(platformUrl, platformName));
+                }
+            }
+
+            // 解析 related_works 列表
+            List<JmCreatorRelatedWork> relatedWorks = new ArrayList<>();
+            if (data.has("related_works") && data.get("related_works").isJsonArray()) {
+                for (JsonElement item : data.getAsJsonArray("related_works")) {
+                    JsonObject node = item.getAsJsonObject();
+                    String id = node.has("id") && !node.get("id").isJsonNull()
+                            ? node.get("id").getAsString() : "";
+                    String workImage = node.has("work_image") && !node.get("work_image").isJsonNull()
+                            ? node.get("work_image").getAsString() : "";
+                    String title = node.has("work_title") && !node.get("work_title").isJsonNull()
+                            ? node.get("work_title").getAsString() : "";
+                    String date = node.has("work_date") && !node.get("work_date").isJsonNull()
+                            ? node.get("work_date").getAsString() : "";
+                    String platformName = node.has("platform_name") && !node.get("platform_name").isJsonNull()
+                            ? node.get("platform_name").getAsString() : "";
+                    relatedWorks.add(new JmCreatorRelatedWork(id, workImage, title, date, platformName));
+                }
+            }
+
+            // 解析 filters
+            Map<String, Object> filters = new HashMap<>();
+            if (data.has("filters") && data.get("filters").isJsonObject()) {
+                JsonObject filtersObj = data.getAsJsonObject("filters");
+                for (Map.Entry<String, JsonElement> entry : filtersObj.entrySet()) {
+                    if (entry.getValue().isJsonArray()) {
+                        List<String> values = new ArrayList<>();
+                        for (JsonElement e : entry.getValue().getAsJsonArray()) {
+                            values.add(e.isJsonPrimitive() ? e.getAsString() : e.toString());
+                        }
+                        filters.put(entry.getKey(), values);
+                    } else if (entry.getValue().isJsonPrimitive()) {
+                        filters.put(entry.getKey(), entry.getValue().getAsString());
+                    } else {
+                        filters.put(entry.getKey(), entry.getValue().toString());
+                    }
+                }
+            }
+
+            return new JmCreatorAuthorWorksPage(
+                    workTitle, authorName, workDate, authorAvatar,
+                    backgroundImage, sponsors, relatedWorks, filters
+            );
+        } catch (Exception e) {
+            throw new ParseResponseException("Failed to parse creator author works page API JSON", e);
+        }
+    }
+
+    /**
+     * 解析创作者作品信息（作品弹窗详情）的API JSON响应
+     *
+     * @param json API返回的JSON字符串（data层）
+     * @return JmCreatorWorkInfo 对象
+     */
+    public static JmCreatorWorkInfo parseCreatorWorkInfo(String json) {
+        try {
+            JsonObject data = JsonParser.parseString(json).getAsJsonObject();
+
+            String workDate = data.has("work_date") && !data.get("work_date").isJsonNull()
+                    ? data.get("work_date").getAsString() : "";
+            String authorName = data.has("author_name") && !data.get("author_name").isJsonNull()
+                    ? data.get("author_name").getAsString() : "";
+            String workTitle = data.has("work_title") && !data.get("work_title").isJsonNull()
+                    ? data.get("work_title").getAsString() : "";
+
+            // 解析 related_works 列表
+            List<JmCreatorRelatedWork> relatedWorks = new ArrayList<>();
+            if (data.has("related_works") && data.get("related_works").isJsonArray()) {
+                for (JsonElement item : data.getAsJsonArray("related_works")) {
+                    JsonObject node = item.getAsJsonObject();
+                    String id = node.has("id") && !node.get("id").isJsonNull()
+                            ? node.get("id").getAsString() : "";
+                    String workImage = node.has("work_image") && !node.get("work_image").isJsonNull()
+                            ? node.get("work_image").getAsString() : "";
+                    String title = node.has("work_title") && !node.get("work_title").isJsonNull()
+                            ? node.get("work_title").getAsString() : "";
+                    String date = node.has("work_date") && !node.get("work_date").isJsonNull()
+                            ? node.get("work_date").getAsString() : "";
+                    String platformName = node.has("platform_name") && !node.get("platform_name").isJsonNull()
+                            ? node.get("platform_name").getAsString() : "";
+                    relatedWorks.add(new JmCreatorRelatedWork(id, workImage, title, date, platformName));
+                }
+            }
+
+            return new JmCreatorWorkInfo(workDate, authorName, workTitle, relatedWorks);
+        } catch (Exception e) {
+            throw new ParseResponseException("Failed to parse creator work info API JSON", e);
+        }
+    }
+
+    /**
+     * 解析创作者作品详情
+     *
+     * @param json 原始JSON字符串
+     * @return JmCreatorWorkDetail 对象
+     */
+    public static JmCreatorWorkDetail parseCreatorWorkDetail(String json) {
+        try {
+            JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
+
+            String id = obj.has("id") && !obj.get("id").isJsonNull()
+                    ? obj.get("id").getAsString() : "";
+            String name = obj.has("name") && !obj.get("name").isJsonNull()
+                    ? obj.get("name").getAsString() : "";
+            int totalPage = obj.has("total_page") && !obj.get("total_page").isJsonNull()
+                    ? obj.get("total_page").getAsInt() : 0;
+            String content = obj.has("content") && !obj.get("content").isJsonNull()
+                    ? obj.get("content").getAsString() : "";
+            long addtime = obj.has("addtime") && !obj.get("addtime").isJsonNull()
+                    ? obj.get("addtime").getAsLong() : 0L;
+            String adddt = obj.has("adddt") && !obj.get("adddt").isJsonNull()
+                    ? obj.get("adddt").getAsString() : "";
+
+            List<JmCreatorWorkDetail.Image> images = new ArrayList<>();
+            if (obj.has("images") && !obj.get("images").isJsonNull()) {
+                JsonArray imagesArray = obj.getAsJsonArray("images");
+                for (JsonElement elem : imagesArray) {
+                    JsonObject imgObj = elem.getAsJsonObject();
+                    int page = imgObj.has("page") && !imgObj.get("page").isJsonNull()
+                            ? imgObj.get("page").getAsInt() : 0;
+                    String url = imgObj.has("image") && !imgObj.get("image").isJsonNull()
+                            ? imgObj.get("image").getAsString() : "";
+                    images.add(new JmCreatorWorkDetail.Image(page, url));
+                }
+            }
+
+            return new JmCreatorWorkDetail(id, name, totalPage, images, content, addtime, adddt);
+        } catch (Exception e) {
+            throw new ParseResponseException("Failed to parse creator work detail API JSON", e);
+        }
+    }
+
+    private static List<JmCreatorWorkMeta> parseCreatorWorkMetaList(JsonArray array) {
+        if (array == null || array.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<JmCreatorWorkMeta> results = new ArrayList<>();
+        for (JsonElement item : array) {
+            JsonObject node = item.getAsJsonObject();
+
+            String id = "";
+            if (node.has("id") && !node.get("id").isJsonNull()) {
+                id = node.get("id").getAsString();
+            }
+
+            String name = "";
+            if (node.has("name") && !node.get("name").isJsonNull()) {
+                name = node.get("name").getAsString();
+            } else if (node.has("work_title") && !node.get("work_title").isJsonNull()) {
+                name = node.get("work_title").getAsString();
+            }
+
+            String workImage = "";
+            if (node.has("work_image") && !node.get("work_image").isJsonNull()) {
+                workImage = node.get("work_image").getAsString();
+            }
+
+            String platformName = "";
+            if (node.has("platform_name") && !node.get("platform_name").isJsonNull()) {
+                platformName = node.get("platform_name").getAsString();
+            }
+
+            String workDate = "";
+            if (node.has("work_date") && !node.get("work_date").isJsonNull()) {
+                workDate = node.get("work_date").getAsString();
+            }
+
+            String authorName = "";
+            if (node.has("author_name") && !node.get("author_name").isJsonNull()) {
+                authorName = node.get("author_name").getAsString();
+            }
+
+            String authorId = "";
+            if (node.has("author_id") && !node.get("author_id").isJsonNull()) {
+                authorId = node.get("author_id").getAsString();
+            }
+
+            results.add(new JmCreatorWorkMeta(id, name, workImage, platformName, workDate, authorName, authorId));
+        }
+        return results;
+    }
+
+    // == 通知子系统解析 ==
 
     /**
      * 解析通知列表的API JSON响应。

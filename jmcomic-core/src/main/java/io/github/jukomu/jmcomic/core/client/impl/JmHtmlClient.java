@@ -2,6 +2,8 @@ package io.github.jukomu.jmcomic.core.client.impl;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.jukomu.jmcomic.api.client.JmCreatorClient;
+import io.github.jukomu.jmcomic.api.client.JmNovelClient;
 import io.github.jukomu.jmcomic.api.enums.Category;
 import io.github.jukomu.jmcomic.api.enums.FavoriteFolderType;
 import io.github.jukomu.jmcomic.api.enums.SubCategory;
@@ -33,7 +35,7 @@ import java.util.concurrent.*;
  * @Project: jmcomic-api-java
  * @Date: 2025/10/28
  */
-public final class JmHtmlClient extends AbstractJmClient {
+public final class JmHtmlClient extends AbstractJmClient implements JmNovelClient, JmCreatorClient {
 
     private static final Logger logger = LoggerFactory.getLogger(JmHtmlClient.class);
 
@@ -410,6 +412,7 @@ public final class JmHtmlClient extends AbstractJmClient {
     // == HTML 客户端暂不实现（使用 JmApiClient） ==
 
     @Override
+    @Deprecated
     public Map register(String username, String password, String passwordConfirm, String email) {
         throw new UnsupportedOperationException("Register via HTML client is not currently supported. Use JmApiClient instead.");
     }
@@ -420,6 +423,7 @@ public final class JmHtmlClient extends AbstractJmClient {
     }
 
     @Override
+    @Deprecated
     public void forgotPassword(String email) {
         throw new UnsupportedOperationException("Forgot password via HTML client is not currently supported. Use JmApiClient instead.");
     }
@@ -479,6 +483,89 @@ public final class JmHtmlClient extends AbstractJmClient {
         throw new UnsupportedOperationException("Get categories list via HTML client is not currently supported. Use JmApiClient instead.");
     }
 
+    // == 小说 + 创作者（暂不实现，用 JmApiClient） ==
+
+    @Override
+    public JmNovelPage getNovelList(String order, int page) {
+        throw new UnsupportedOperationException("Get novel list via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmNovelDetail getNovelDetail(String novelId) {
+        throw new UnsupportedOperationException("Get novel detail via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmNovelChapter getNovelChapter(String chapterId, String lang) {
+        throw new UnsupportedOperationException("Get novel chapter via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmNovelPage searchNovels(String searchQuery) {
+        throw new UnsupportedOperationException("Search novels via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public void toggleNovelLike(String novelId) {
+        throw new UnsupportedOperationException("Toggling novel like via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmComment postNovelComment(String novelId, String commentText, String chapterId) {
+        throw new UnsupportedOperationException("Posting novel comment via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmComment replyToNovelComment(String novelId, String commentText, String parentCommentId, String chapterId) {
+        throw new UnsupportedOperationException("Replying to novel comment via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public void toggleNovelFavorite(String novelId) {
+        throw new UnsupportedOperationException("Toggle novel favorite via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmNovelFavoritesPage getNovelFavorites(int page, String folderId, String order) {
+        throw new UnsupportedOperationException("Get novel favorites via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmFavoriteFolderResult manageNovelFavoriteFolder(FavoriteFolderType type, String folderId, String folderName, String novelId) {
+        throw new UnsupportedOperationException("Edit novel favorites via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    @Deprecated
+    public Map buyNovelChapter(String chapterId) {
+        throw new UnsupportedOperationException("Buy novel chapter via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmCreatorPage getCreatorAuthors(int page, String searchQuery) {
+        throw new UnsupportedOperationException("Get creator authors via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmCreatorWorkPage getCreatorWorks(int page, String searchValue, String lang, String source) {
+        throw new UnsupportedOperationException("Get creator works via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmCreatorAuthorWorksPage getCreatorAuthorWorks(String creatorId, String language, String source, int page) {
+        throw new UnsupportedOperationException("Get creator author works via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmCreatorWorkInfo getCreatorWorkInfo(String workId) {
+        throw new UnsupportedOperationException("Get creator work info via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmCreatorWorkDetail getCreatorWorkDetail(String workId) {
+        throw new UnsupportedOperationException("Get creator work detail via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
     // == 通知/任务/签到/每周必看/设置（暂不实现，用 JmApiClient） ==
 
     @Override
@@ -517,26 +604,31 @@ public final class JmHtmlClient extends AbstractJmClient {
     }
 
     @Override
+    @Deprecated
     public Map claimTask(Map<String, String> body) {
         throw new UnsupportedOperationException("Claim task via HTML client is not currently supported. Use JmApiClient instead.");
     }
 
     @Override
+    @Deprecated
     public Map getCoinBuyList(Map<String, String> body) {
         throw new UnsupportedOperationException("Get coin buy list via HTML client is not currently supported. Use JmApiClient instead.");
     }
 
     @Override
+    @Deprecated
     public Map buyComicWithCoin(String comicId) {
         throw new UnsupportedOperationException("Buy comic with coin via HTML client is not currently supported. Use JmApiClient instead.");
     }
 
     @Override
+    @Deprecated
     public Map chargeCoins() {
         throw new UnsupportedOperationException("Charge coins via HTML client is not currently supported. Use JmApiClient instead.");
     }
 
     @Override
+    @Deprecated
     public Map setAdFree(Map<String, String> body) {
         throw new UnsupportedOperationException("Set ad free via HTML client is not currently supported. Use JmApiClient instead.");
     }

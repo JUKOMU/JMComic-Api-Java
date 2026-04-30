@@ -1,6 +1,8 @@
 package io.github.jukomu.jmcomic.core.client.impl;
 
 import com.google.gson.*;
+import io.github.jukomu.jmcomic.api.client.JmCreatorClient;
+import io.github.jukomu.jmcomic.api.client.JmNovelClient;
 import io.github.jukomu.jmcomic.api.enums.FavoriteFolderType;
 import io.github.jukomu.jmcomic.api.enums.TimeOption;
 import io.github.jukomu.jmcomic.api.enums.VoteType;
@@ -36,7 +38,7 @@ import java.util.Random;
  * @Project: jmcomic-api-java
  * @Date: 2025/10/28
  */
-public final class JmApiClient extends AbstractJmClient {
+public final class JmApiClient extends AbstractJmClient implements JmNovelClient, JmCreatorClient {
 
     private static final Logger logger = LoggerFactory.getLogger(JmApiClient.class);
 
@@ -396,7 +398,7 @@ public final class JmApiClient extends AbstractJmClient {
         HttpUrl.Builder urlBuilder = newHttpUrlBuilder()
                 .addPathSegment(JmConstants.API_FORUM)
                 .addQueryParameter(query.getIdParam(), query.getEntityId())
-                .addQueryParameter("mode", query.getMode())
+                .addQueryParameter("mode", query.getMode().getValue())
                 .addQueryParameter("page", String.valueOf(query.getPage()));
         if (query.getChapterId() != null && !query.getChapterId().isEmpty()) {
             urlBuilder.addQueryParameter("ncid", query.getChapterId());
@@ -588,6 +590,7 @@ public final class JmApiClient extends AbstractJmClient {
     // == 会话管理扩展 ==
 
     @Override
+    @Deprecated
     public Map register(String username, String password, String passwordConfirm, String email) {
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment(JmConstants.API_MEMBER_REGISTER)
@@ -621,6 +624,7 @@ public final class JmApiClient extends AbstractJmClient {
     }
 
     @Override
+    @Deprecated
     public void forgotPassword(String email) {
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment(JmConstants.API_MEMBER_FORGOT)
@@ -812,6 +816,288 @@ public final class JmApiClient extends AbstractJmClient {
         }
     }
 
+    // == 小说子系统实现 ==
+
+    @Override
+    public JmNovelPage getNovelList(String order, int page) {
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment(JmConstants.API_NOVEL_LIST)
+                .addQueryParameter("o", order != null ? order : "")
+                .addQueryParameter("t", String.valueOf(Instant.now().getEpochSecond()))
+                .build();
+
+        JmApiResponse jmApiResponse = executeGetRequest(url, JmConstants.APP_TOKEN_SECRET);
+        return ApiParser.parseNovelPage(jmApiResponse.getDecodedData());
+    }
+
+    @Override
+    public JmNovelDetail getNovelDetail(String novelId) {
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment(JmConstants.API_NOVEL_DETAIL)
+                .addQueryParameter("nid", novelId)
+                .build();
+
+        JmApiResponse jmApiResponse = executeGetRequest(url, JmConstants.APP_TOKEN_SECRET);
+        return ApiParser.parseNovelDetail(jmApiResponse.getDecodedData());
+    }
+
+    @Override
+    public JmNovelChapter getNovelChapter(String chapterId, String lang) {
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment(JmConstants.API_NOVEL_CHAPTERS)
+                .addQueryParameter("ncid", chapterId)
+                .addQueryParameter("lang", lang)
+                .build();
+
+        JmApiResponse jmApiResponse = executeGetRequest(url, JmConstants.APP_TOKEN_SECRET);
+        return ApiParser.parseNovelChapter(jmApiResponse.getDecodedData());
+    }
+
+    @Override
+    public JmNovelPage searchNovels(String searchQuery) {
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment(JmConstants.API_NOVEL_SEARCH)
+                .addQueryParameter("search_query", searchQuery)
+                .build();
+
+        JmApiResponse jmApiResponse = executeGetRequest(url, JmConstants.APP_TOKEN_SECRET);
+        return ApiParser.parseNovelPage(jmApiResponse.getDecodedData());
+    }
+
+    @Override
+    public void toggleNovelLike(String novelId) {
+        doToggleLike(novelId, "novel");
+    }
+
+    @Override
+    public JmComment postNovelComment(String novelId, String commentText, String chapterId) {
+        return doPostNovelComment(novelId, commentText, null, chapterId);
+    }
+
+    @Override
+    public JmComment replyToNovelComment(String novelId, String commentText, String parentCommentId, String chapterId) {
+        return doPostNovelComment(novelId, commentText, parentCommentId, chapterId);
+    }
+
+    private JmComment doPostNovelComment(String novelId, String commentText, String parentCommentId, String chapterId) {
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment(JmConstants.API_COMMENT)
+                .build();
+
+        FormBody.Builder formBuilder = new FormBody.Builder()
+                .add("nid", novelId)
+                .add("comment", commentText);
+        if (parentCommentId != null && !parentCommentId.isEmpty()) {
+            formBuilder.add("comment_id", parentCommentId);
+        }
+        if (chapterId != null && !chapterId.isEmpty()) {
+            formBuilder.add("ncid", chapterId);
+        }
+
+        JmApiResponse jmApiResponse = executePostRequest(url, formBuilder.build());
+        return ApiParser.parseCommentSubmitResult(
+                jmApiResponse.getDecodedData(), novelId, commentText,
+                getLoggedInUserName() != null ? getLoggedInUserName() : "");
+    }
+
+    @Override
+    public void toggleNovelFavorite(String novelId) {
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment(JmConstants.API_NOVEL_FAVORITES)
+                .build();
+
+        // Toggle 操作：POST { nid }，服务端自动判定收藏/取消收藏
+        RequestBody formBody = new FormBody.Builder()
+                .add("nid", novelId)
+                .build();
+
+        try {
+            JmApiResponse jmApiResponse = executePostRequest(url, formBody);
+            JsonObject jsonObject = JsonParser.parseString(jmApiResponse.getDecodedData()).getAsJsonObject();
+
+            String status = "";
+            if (jsonObject.has("status") && !jsonObject.get("status").isJsonNull()) {
+                status = jsonObject.get("status").getAsString();
+            }
+
+            if (!"ok".equalsIgnoreCase(status)) {
+                String msg = "";
+                if (jsonObject.has("msg") && !jsonObject.get("msg").isJsonNull()) {
+                    msg = jsonObject.get("msg").getAsString();
+                }
+                throw new ResponseException("Failed to toggle novel favorite: " + msg);
+            }
+        } catch (JsonSyntaxException | JsonIOException e) {
+            throw new ParseResponseException("Failed to parse 'toggle novel favorite' response", e);
+        }
+    }
+
+    @Override
+    public JmNovelFavoritesPage getNovelFavorites(int page, String folderId, String order) {
+        HttpUrl.Builder urlBuilder = newHttpUrlBuilder()
+                .addPathSegment(JmConstants.API_NOVEL_FAVORITES)
+                .addQueryParameter("page", String.valueOf(page))
+                .addQueryParameter("o", order != null ? order : "");
+        if (folderId != null && !folderId.isEmpty()) {
+            urlBuilder.addQueryParameter("folder_id", folderId);
+        }
+
+        JmApiResponse jmApiResponse = executeGetRequest(urlBuilder.build(), JmConstants.APP_TOKEN_SECRET);
+        return ApiParser.parseNovelFavoritesPage(jmApiResponse.getDecodedData());
+    }
+
+    @Override
+    public JmFavoriteFolderResult manageNovelFavoriteFolder(FavoriteFolderType type, String folderId, String folderName, String novelId) {
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment(JmConstants.API_EDIT_NOVEL_FAVORITES)
+                .build();
+
+        FormBody.Builder formBuilder = new FormBody.Builder()
+                .add("type", type.getValue());
+        if (folderId != null && !folderId.isEmpty()) {
+            formBuilder.add("folder_id", folderId);
+        }
+        if (folderName != null && !folderName.isEmpty()) {
+            formBuilder.add("folder_name", folderName);
+        }
+        if (novelId != null && !novelId.isEmpty()) {
+            formBuilder.add("nid", novelId);
+        }
+
+        try {
+            JmApiResponse jmApiResponse = executePostRequest(url, formBuilder.build());
+            return ApiParser.parseFavoriteFolderResult(jmApiResponse.getDecodedData());
+        } catch (JsonSyntaxException | JsonIOException e) {
+            throw new ParseResponseException("Failed to parse manage novel favorite folder response", e);
+        }
+    }
+
+    @Override
+    @Deprecated
+    public Map buyNovelChapter(String chapterId) {
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment(JmConstants.API_NOVEL_COIN_BUY)
+                .build();
+
+        RequestBody formBody = new FormBody.Builder()
+                .add("id", chapterId)
+                .build();
+
+        try {
+            JmApiResponse jmApiResponse = executePostRequest(url, formBody);
+            return JsonUtils.fromJson(jmApiResponse.getDecodedData(), Map.class);
+        } catch (JsonSyntaxException | JsonIOException e) {
+            throw new ParseResponseException("Failed to parse buy novel chapter response", e);
+        }
+    }
+
+    // == 创作者子系统实现 ==
+
+    @Override
+    public JmCreatorPage getCreatorAuthors(int page, String searchQuery) {
+        HttpUrl.Builder urlBuilder = newHttpUrlBuilder()
+                .addPathSegment(JmConstants.API_CREATOR_AUTHOR)
+                .addQueryParameter("page", String.valueOf(page));
+        if (searchQuery != null && !searchQuery.isEmpty()) {
+            urlBuilder.addQueryParameter("search_query", searchQuery);
+        }
+
+        JmApiResponse jmApiResponse = executeGetRequest(urlBuilder.build(), JmConstants.APP_TOKEN_SECRET);
+        // 响应格式: {status, data: {total, content}}
+        try {
+            JsonObject root = JsonParser.parseString(jmApiResponse.getDecodedData()).getAsJsonObject();
+            String innerData = root.getAsJsonObject("data").toString();
+            return ApiParser.parseCreatorPage(innerData);
+        } catch (JsonSyntaxException | JsonIOException e) {
+            throw new ParseResponseException("Failed to parse creator author list response", e);
+        }
+    }
+
+    @Override
+    public JmCreatorWorkPage getCreatorWorks(int page, String searchValue, String lang, String source) {
+        HttpUrl.Builder urlBuilder = newHttpUrlBuilder()
+                .addPathSegment(JmConstants.API_CREATOR_WORK)
+                .addQueryParameter("page", String.valueOf(page));
+        if (searchValue != null && !searchValue.isEmpty()) {
+            urlBuilder.addQueryParameter("search_value", searchValue);
+        }
+        if (lang != null && !lang.isEmpty()) {
+            urlBuilder.addQueryParameter("lang", lang);
+        }
+        if (source != null && !source.isEmpty()) {
+            urlBuilder.addQueryParameter("source", source);
+        }
+
+        JmApiResponse jmApiResponse = executeGetRequest(urlBuilder.build(), JmConstants.APP_TOKEN_SECRET);
+        // 响应格式: {"status":200, "data":{content, total, filters}}
+        try {
+            JsonObject root = JsonParser.parseString(jmApiResponse.getDecodedData()).getAsJsonObject();
+            String innerData = root.getAsJsonObject("data").toString();
+            return ApiParser.parseCreatorWorkPage(innerData);
+        } catch (JsonSyntaxException | JsonIOException e) {
+            throw new ParseResponseException("Failed to parse creator work list response", e);
+        }
+    }
+
+    @Override
+    public JmCreatorAuthorWorksPage getCreatorAuthorWorks(String creatorId, String language, String source, int page) {
+        HttpUrl.Builder urlBuilder = newHttpUrlBuilder()
+                .addPathSegment(JmConstants.API_CREATOR_WORK_DETAIL)
+                // APK 用的参数名是 "id" 不是 "creatorId"
+                .addQueryParameter("id", creatorId)
+                .addQueryParameter("page", String.valueOf(page));
+        if (language != null && !language.isEmpty()) {
+            // APK 用的是 "lang" 不是 "language"
+            urlBuilder.addQueryParameter("lang", language);
+        }
+        if (source != null && !source.isEmpty()) {
+            urlBuilder.addQueryParameter("source", source);
+        }
+
+        JmApiResponse jmApiResponse = executeGetRequest(urlBuilder.build(), JmConstants.APP_TOKEN_SECRET);
+        // APK 响应路径: e.data.data
+        try {
+            JsonObject root = JsonParser.parseString(jmApiResponse.getDecodedData()).getAsJsonObject();
+            if (root.has("error")) {
+                return new JmCreatorAuthorWorksPage("", "", "", "", "", List.of(), List.of(), Map.of("error", root.get("error").getAsString()));
+            }
+            return ApiParser.parseCreatorAuthorWorksPage(root.getAsJsonObject("data").toString());
+        } catch (JsonSyntaxException | JsonIOException e) {
+            throw new ParseResponseException("Failed to parse creator author works response", e);
+        }
+    }
+
+    @Override
+    public JmCreatorWorkInfo getCreatorWorkInfo(String workId) {
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment(JmConstants.API_CREATOR_WORK_INFO)
+                .addQueryParameter("id", workId)
+                .build();
+
+        JmApiResponse jmApiResponse = executeGetRequest(url, JmConstants.APP_TOKEN_SECRET);
+        try {
+            JsonObject root = JsonParser.parseString(jmApiResponse.getDecodedData()).getAsJsonObject();
+            return ApiParser.parseCreatorWorkInfo(root.getAsJsonObject("data").toString());
+        } catch (JsonSyntaxException | JsonIOException e) {
+            throw new ParseResponseException("Failed to parse creator work info response", e);
+        }
+    }
+
+    @Override
+    public JmCreatorWorkDetail getCreatorWorkDetail(String workId) {
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment(JmConstants.API_CREATOR_WORK_INFO_DETAIL)
+                .addQueryParameter("id", workId)
+                .build();
+
+        JmApiResponse jmApiResponse = executeGetRequest(url, JmConstants.APP_TOKEN_SECRET);
+        try {
+            return ApiParser.parseCreatorWorkDetail(jmApiResponse.getDecodedData());
+        } catch (JsonSyntaxException | JsonIOException e) {
+            throw new ParseResponseException("Failed to parse creator work detail response", e);
+        }
+    }
+
     // == 通知系统实现 ==
 
     @Override
@@ -906,6 +1192,7 @@ public final class JmApiClient extends AbstractJmClient {
     }
 
     @Override
+    @Deprecated
     public Map claimTask(Map<String, String> body) {
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment(JmConstants.API_TASKS_LIST)
@@ -925,6 +1212,7 @@ public final class JmApiClient extends AbstractJmClient {
     }
 
     @Override
+    @Deprecated
     public Map getCoinBuyList(Map<String, String> body) {
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment(JmConstants.API_TASKS_BUY_LIST)
@@ -944,6 +1232,7 @@ public final class JmApiClient extends AbstractJmClient {
     }
 
     @Override
+    @Deprecated
     public Map buyComicWithCoin(String comicId) {
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment(JmConstants.API_COIN_BUY_COMICS)
@@ -962,6 +1251,7 @@ public final class JmApiClient extends AbstractJmClient {
     }
 
     @Override
+    @Deprecated
     public Map chargeCoins() {
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment(JmConstants.API_COIN_BUY_CHARGE)
@@ -976,6 +1266,7 @@ public final class JmApiClient extends AbstractJmClient {
     }
 
     @Override
+    @Deprecated
     public Map setAdFree(Map<String, String> body) {
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment(JmConstants.API_AD_FREE)

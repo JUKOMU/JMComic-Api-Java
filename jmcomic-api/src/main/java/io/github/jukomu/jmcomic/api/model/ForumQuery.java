@@ -1,5 +1,7 @@
 package io.github.jukomu.jmcomic.api.model;
 
+import io.github.jukomu.jmcomic.api.enums.ForumMode;
+
 /**
  * @author JUKOMU
  * @Description: 论坛评论列表查询参数，遵循 {@link SearchQuery} 的 Builder 模式。
@@ -23,7 +25,7 @@ public final class ForumQuery {
     private final String idParam;
     private final String entityId;
     private final String chapterId;
-    private final String mode;
+    private final ForumMode mode;
     private final int page;
 
     private ForumQuery(Builder builder) {
@@ -103,7 +105,7 @@ public final class ForumQuery {
         return chapterId;
     }
 
-    public String getMode() {
+    public ForumMode getMode() {
         return mode;
     }
 
@@ -118,7 +120,7 @@ public final class ForumQuery {
         private String idParam = "aid";
         private String entityId;
         private String chapterId;
-        private String mode = "all";
+        private ForumMode mode = ForumMode.ALL;
         private int page = 1;
 
         public Builder album(String albumId) {
@@ -150,7 +152,7 @@ public final class ForumQuery {
             return this;
         }
 
-        public Builder mode(String mode) {
+        public Builder mode(ForumMode mode) {
             this.mode = mode;
             return this;
         }

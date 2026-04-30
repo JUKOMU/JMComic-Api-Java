@@ -32,7 +32,7 @@ public final class JmConstants {
     public static final String APP_TOKEN_SECRET_2 = "18comicAPPContent"; // 用于特殊接口
     public static final String APP_DATA_SECRET = "185Hcomic3PAPP7R";
     public static final String API_DOMAIN_SERVER_SECRET = "diosfjckwpqpdfjkvnqQjsik";
-    public static String APP_VERSION = "2.0.18";
+    public static String APP_VERSION = "2.0.20";
 
     // == 基础 API 端点路径 ==
     public static final String API_SETTING = "setting";
@@ -47,7 +47,7 @@ public final class JmConstants {
 
     // == API 端点路径 (核心交互) ==
     public static final String API_FORUM = "forum";
-    /** @deprecated 评价投票功能已停用，服务端返回"评价已停用" */
+    // @deprecated 评价投票功能已停用，服务端返回"评价已停用"
     public static final String API_COMMENT_VOTE = "comment_vote";
     public static final String API_LIKE = "like";
     public static final String API_HOT_TAGS = "hot_tags";
