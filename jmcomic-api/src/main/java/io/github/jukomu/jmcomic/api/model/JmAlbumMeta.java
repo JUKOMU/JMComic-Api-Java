@@ -24,8 +24,28 @@ public record JmAlbumMeta(
         /*
           标签列表
          */
-        List<String> tags
+        List<String> tags,
+        /*
+          描述
+         */
+        String description,
+        /*
+          封面图
+         */
+        String image,
+        /*
+          主分类
+         */
+        JmCategoryMeta category,
+        /*
+          子分类
+         */
+        JmCategoryMeta subCategory
 ) {
+
+    public JmAlbumMeta(String id, String title, List<String> authors, List<String> tags) {
+        this(id, title, authors, tags, null, null, null, null);
+    }
 
     /**
      * 获取本子ID
@@ -61,5 +81,41 @@ public record JmAlbumMeta(
      */
     public List<String> getTags() {
         return tags;
+    }
+
+    /**
+     * 获取描述
+     *
+     * @return 描述
+     */
+    public String getDescription() {
+        return description;
+    }
+
+    /**
+     * 获取封面图
+     *
+     * @return 封面图
+     */
+    public String getImage() {
+        return image;
+    }
+
+    /**
+     * 获取主分类
+     *
+     * @return 主分类
+     */
+    public JmCategoryMeta getCategory() {
+        return category;
+    }
+
+    /**
+     * 获取子分类
+     *
+     * @return 子分类
+     */
+    public JmCategoryMeta getSubCategory() {
+        return subCategory;
     }
 }

@@ -10,7 +10,7 @@ public final class FavoriteQuery {
     private final int folderId;
     private final int page;
 
-    private FavoriteQuery(FavoriteQuery.Builder builder) {
+    private FavoriteQuery(Builder builder) {
         if (builder.folderId < 0) {
             this.folderId = 0;
         } else {
@@ -55,7 +55,7 @@ public final class FavoriteQuery {
          *
          * @param folderId 收藏夹ID，例如 0
          */
-        public FavoriteQuery.Builder folderId(int folderId) {
+        public Builder folderId(int folderId) {
             this.folderId = folderId;
             return this;
         }
@@ -65,7 +65,7 @@ public final class FavoriteQuery {
          *
          * @param page 页码，必须 >= 1
          */
-        public FavoriteQuery.Builder page(int page) {
+        public Builder page(int page) {
             this.page = page;
             return this;
         }

@@ -1,5 +1,6 @@
 package io.github.jukomu.jmcomic.core.net.model;
 
+import io.github.jukomu.jmcomic.api.exception.JmComicException;
 import io.github.jukomu.jmcomic.api.exception.ResourceNotFoundException;
 import io.github.jukomu.jmcomic.api.exception.ResponseException;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
@@ -50,10 +51,15 @@ public class JmApiResponse extends JmResponse {
     @Override
     public void requireSuccess() throws ResponseException {
         super.requireSuccess();
-        String decodedData = getDecodedData();
-        // 判断本子是否存在
-        if (decodedData.contains("\"name\":null") && decodedData.contains("\"images\":[]")) {
-            throw new ResourceNotFoundException("请求的资源不存在", getOriginUrl());
+        try {
+            String decodedData = getDecodedData();
+            // 判断本子是否存在（仅当数据能被正确解密时检查）
+            if (decodedData.contains("\"name\":null") && decodedData.contains("\"images\":[]")) {
+                throw new ResourceNotFoundException("请求的资源不存在", getOriginUrl());
+            }
+        } catch (JmComicException e) {
+            // 某些接口（如 hot_tags）使用不同的加密密钥，此处忽略解密异常
+            // 调用方（如 getHotTags）会自行处理失败情况
         }
     }
 

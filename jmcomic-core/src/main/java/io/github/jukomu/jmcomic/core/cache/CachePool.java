@@ -185,8 +185,11 @@ public final class CachePool<K, V> {
         LinkedHashSet<Node<K, V>> oldSet = freqMap.get(oldFreq);
         if (oldSet != null) {
             oldSet.remove(node);
-            if (oldSet.isEmpty() && oldFreq == minFreq) {
-                minFreq++;
+            if (oldSet.isEmpty()) {
+                freqMap.remove(oldFreq); // 清理空集合，避免长期残留
+                if (oldFreq == minFreq) {
+                    minFreq++;
+                }
             }
         }
 

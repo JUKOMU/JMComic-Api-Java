@@ -7,21 +7,37 @@ package io.github.jukomu.jmcomic.api.model;
  * @Date: 2025/10/28
  */
 public record JmUserInfo(
+        /* 用户ID */
         String uid,
+        /* 用户名 */
         String username,
+        /* 邮箱地址 */
         String email,
+        /* 邮箱是否已验证 */
         boolean emailVerified,
+        /* 头像URL */
         String avatarUrl,
+        /* 用户名字 */
         String firstName,
+        /* 性别 */
         String gender,
+        /* 个性签名/消息 */
         String message,
+        /* 金币数量 */
         int coin,
+        /* 收藏的本子数量 */
         int albumFavorites,
+        /* 用户等级 */
         int level,
+        /* 等级名称 */
         String levelName,
+        /* 距离下一级所需经验值 */
         long nextLevelExp,
+        /* 当前经验值 */
         long currentExp,
+        /* 当前等级经验百分比 */
         double expPercent,
+        /* 最大收藏本子数量 */
         int maxAlbumFavorites
 ) {
     /**

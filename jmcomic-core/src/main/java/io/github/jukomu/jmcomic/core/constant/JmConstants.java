@@ -34,6 +34,84 @@ public final class JmConstants {
     public static final String API_DOMAIN_SERVER_SECRET = "diosfjckwpqpdfjkvnqQjsik";
     public static String APP_VERSION = "2.0.18";
 
+    // == 基础 API 端点路径 ==
+    public static final String API_SETTING = "setting";
+    public static final String API_ALBUM = "album";
+    public static final String API_CHAPTER = "chapter";
+    public static final String API_CHAPTER_VIEW_TEMPLATE = "chapter_view_template";
+    public static final String API_SEARCH = "search";
+    public static final String API_FAVORITE = "favorite";
+    public static final String API_FILTER = "filter";
+    public static final String API_LOGIN = "login";
+    public static final String API_COMMENT = "comment";
+
+    // == API 端点路径 (核心交互) ==
+    public static final String API_FORUM = "forum";
+    /** @deprecated 评价投票功能已停用，服务端返回"评价已停用" */
+    public static final String API_COMMENT_VOTE = "comment_vote";
+    public static final String API_LIKE = "like";
+    public static final String API_HOT_TAGS = "hot_tags";
+    public static final String API_LATEST = "latest";
+    public static final String API_COMIC_READ = "comic_read";
+    public static final String API_FAVORITE_FOLDER = "favorite_folder";
+    public static final String API_ALBUM_DOWNLOAD = "album_download_2";
+
+    // == API 端点路径 (用户功能) ==
+    public static final String API_MEMBER_REGISTER = "register";
+    public static final String API_MEMBER_LOGOUT = "logout";
+    public static final String API_MEMBER_FORGOT = "forgot";
+    public static final String API_USEREDIT = "useredit";
+    public static final String API_HISTORY_LIST = "watch_list";
+    public static final String API_COMIC_RANDOM_RECOMMEND = "random_recommend";
+    public static final String API_COMIC_PROMOTE = "promote";
+    public static final String API_COMIC_PROMOTE_LIST = "promote_list";
+    public static final String API_COMIC_SER_MORE_LIST = "serialization";
+    public static final String API_TAGS_FAVORITE = "tags_favorite";
+    public static final String API_TAGS_FAVORITE_UPDATE = "tags_favorite_update";
+    public static final String API_CATEGORIES_LIST = "categories";
+
+    // == 小说 API 端点路径 ==
+    public static final String API_NOVEL_LIST = "novels";
+    public static final String API_NOVEL_DETAIL = "novel";
+    public static final String API_NOVEL_CHAPTERS = "novelchapters";
+    public static final String API_NOVEL_SEARCH = "search_novels";
+    public static final String API_NOVEL_FAVORITES = "novel_favorites";
+    public static final String API_EDIT_NOVEL_FAVORITES = "novel_favorites_folder";
+    public static final String API_NOVEL_COIN_BUY = "coin_buy_nc";
+
+    // == 创作者 API 端点路径 ==
+    public static final String API_CREATOR_AUTHOR = "creator_author";
+    public static final String API_CREATOR_WORK = "creator_work";
+    public static final String API_CREATOR_WORK_DETAIL = "creator_author_work";
+    public static final String API_CREATOR_WORK_INFO = "creator_work_info";
+    public static final String API_CREATOR_WORK_INFO_DETAIL = "creator_work_info_detail";
+
+    // == 通知 API 端点路径 ==
+    public static final String API_NOTIFICATIONS = "notifications";
+    public static final String API_NOTIFICATIONS_UNREAD = "notifications/unreadCount";
+    public static final String API_NOTIFICATIONS_SERTRACK = "album_sertracking";
+    public static final String API_NOTIFICATIONS_TRACK_LIST = "album_tracking";
+
+    // == 任务/硬币 API 端点路径 ==
+    public static final String API_TASKS_LIST = "tasks";
+    public static final String API_TASKS_BUY_LIST = "coin";
+    public static final String API_COIN_BUY_COMICS = "coin_buy_comics";
+    public static final String API_COIN_BUY_CHARGE = "coin_buy_charge";
+    public static final String API_AD_FREE = "ad_free";
+
+    // == 签到 API 端点路径 ==
+    public static final String API_DAILY = "daily";
+    public static final String API_DAILY_CHECK = "daily_chk";
+    public static final String API_DAILY_LIST = "daily_list";
+    public static final String API_DAILY_LIST_FILTER = "daily_list/filter";
+
+    // == 每周必看 API 端点路径 ==
+    public static final String API_WEEK = "week";
+    public static final String API_WEEK_FILTER_LIST = "week/filter";
+
+    // == 分页大小 ==
+    public static final int PAGE_SIZE_FORUM = 10;
+
     // == 图片分割算法关键版本号 ==
     public static final int SCRAMBLE_220980 = 220980;
     public static final int SCRAMBLE_268850 = 268850;

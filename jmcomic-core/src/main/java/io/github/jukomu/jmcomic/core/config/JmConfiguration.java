@@ -41,10 +41,24 @@ public final class JmConfiguration {
     private final int downloadThreadPoolSize;
     // 缓存大小, 单位: Byte
     private final CachePool<CacheKey, Object> cachePool;
-    // 同时下载的章节数
+    /**
+     * @deprecated 线程池大小已统一控制并发，此配置项不再生效
+     */
+    @Deprecated
     private final int concurrentPhotoDownloads;
-    // 同时下载的图片数
+    /**
+     * @deprecated 线程池大小已统一控制并发，此配置项不再生效
+     */
+    @Deprecated
     private final int concurrentImageDownloads;
+    // 后台域名复探间隔（毫秒），默认10分钟
+    private final long domainProbeIntervalMs;
+    // 初始化探活单域名超时（毫秒），默认3秒
+    private final long domainProbeTimeoutMs;
+    // 图片下载超时
+    private final Duration imageTimeout;
+    // 关闭时等待进行中任务完成的超时（毫秒）
+    private final long closeTimeoutMs;
 
     private JmConfiguration(Builder builder) {
         this.clientType = builder.clientType;
@@ -59,6 +73,10 @@ public final class JmConfiguration {
         this.cachePool = new CachePool<>(builder.cacheSize);
         this.concurrentPhotoDownloads = builder.concurrentPhotoDownloads;
         this.concurrentImageDownloads = builder.concurrentImageDownloads;
+        this.domainProbeIntervalMs = builder.domainProbeIntervalMs;
+        this.domainProbeTimeoutMs = builder.domainProbeTimeoutMs;
+        this.imageTimeout = builder.imageTimeout;
+        this.closeTimeoutMs = builder.closeTimeoutMs;
     }
 
     // Getters for all fields
@@ -102,12 +120,36 @@ public final class JmConfiguration {
         return cachePool;
     }
 
+    /**
+     * @deprecated 线程池大小已统一控制并发，此配置项不再生效
+     */
+    @Deprecated
     public int getConcurrentPhotoDownloads() {
         return concurrentPhotoDownloads;
     }
 
+    /**
+     * @deprecated 线程池大小已统一控制并发，此配置项不再生效
+     */
+    @Deprecated
     public int getConcurrentImageDownloads() {
         return concurrentImageDownloads;
+    }
+
+    public long getDomainProbeIntervalMs() {
+        return domainProbeIntervalMs;
+    }
+
+    public long getDomainProbeTimeoutMs() {
+        return domainProbeTimeoutMs;
+    }
+
+    public Duration getImageTimeout() {
+        return imageTimeout;
+    }
+
+    public long getCloseTimeoutMs() {
+        return closeTimeoutMs;
     }
 
     /**
@@ -115,17 +157,21 @@ public final class JmConfiguration {
      */
     public static class Builder {
         private ClientType clientType = ClientType.API;
-        private List<String> apiDomains = new java.util.ArrayList<>();
-        private List<String> htmlDomains = new java.util.ArrayList<>();
+        private List<String> apiDomains = new ArrayList<>();
+        private List<String> htmlDomains = new ArrayList<>();
         private Proxy proxy;
         private Map<String, String> headers = new HashMap<>();
         private Duration timeout = Duration.ofSeconds(30);
         private int retryTimes = 5;
         private ExecutorService executor = null;
-        private int downloadThreadPoolSize = 12; // -1 表示使用默认值 (CPU核心数)
+        private int downloadThreadPoolSize = -1; // -1 表示使用默认值 (CPU核心数)
         private int cacheSize = 100 * 1024 * 1024;
         private int concurrentPhotoDownloads = 3;
         private int concurrentImageDownloads = 20;
+        private long domainProbeIntervalMs = 10 * 60 * 1000; // 10分钟
+        private long domainProbeTimeoutMs = 3000;            // 3秒
+        private Duration imageTimeout = Duration.ofSeconds(60);
+        private long closeTimeoutMs = 60_000;                // 60秒
 
         public Builder clientType(ClientType type) {
             this.clientType = Objects.requireNonNull(type);
@@ -133,12 +179,12 @@ public final class JmConfiguration {
         }
 
         public Builder apiDomains(List<String> domains) {
-            this.apiDomains = new java.util.ArrayList<>(Objects.requireNonNull(domains));
+            this.apiDomains = new ArrayList<>(Objects.requireNonNull(domains));
             return this;
         }
 
         public Builder htmlDomains(List<String> domains) {
-            this.htmlDomains = new java.util.ArrayList<>(Objects.requireNonNull(domains));
+            this.htmlDomains = new ArrayList<>(Objects.requireNonNull(domains));
             return this;
         }
 
@@ -169,7 +215,7 @@ public final class JmConfiguration {
         }
 
         public Builder downloadThreadPoolSize(int size) {
-            if (size <= 0) throw new IllegalArgumentException("Thread pool size must be positive.");
+            if (size < -1 || size == 0) throw new IllegalArgumentException("Thread pool size must be positive or -1.");
             this.downloadThreadPoolSize = size;
             return this;
         }
@@ -185,15 +231,47 @@ public final class JmConfiguration {
             return this;
         }
 
+        /**
+         * @deprecated 线程池大小已统一控制并发，此配置项不再生效
+         */
+        @Deprecated
         public Builder concurrentPhotoDownloads(int size) {
             if (size < 0) throw new IllegalArgumentException("Concurrent photo uploads must be non-negative.");
             this.concurrentPhotoDownloads = size;
             return this;
         }
 
+        /**
+         * @deprecated 线程池大小已统一控制并发，此配置项不再生效
+         */
+        @Deprecated
         public Builder concurrentImageDownloads(int size) {
             if (size < 0) throw new IllegalArgumentException("Concurrent image uploads must be non-negative.");
             this.concurrentImageDownloads = size;
+            return this;
+        }
+
+        public Builder domainProbeIntervalMs(long intervalMs) {
+            if (intervalMs < 0) throw new IllegalArgumentException("Domain probe interval must be non-negative.");
+            this.domainProbeIntervalMs = intervalMs;
+            return this;
+        }
+
+        public Builder domainProbeTimeoutMs(long timeoutMs) {
+            if (timeoutMs < 0) throw new IllegalArgumentException("Domain probe timeout must be non-negative.");
+            this.domainProbeTimeoutMs = timeoutMs;
+            return this;
+        }
+
+        public Builder imageTimeout(Duration timeout) {
+
+            this.imageTimeout = Objects.requireNonNull(timeout);
+            return this;
+        }
+
+        public Builder closeTimeoutMs(long timeoutMs) {
+            if (timeoutMs < 0) throw new IllegalArgumentException("Close timeout must be non-negative.");
+            this.closeTimeoutMs = timeoutMs;
             return this;
         }
 

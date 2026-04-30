@@ -3,7 +3,9 @@ package io.github.jukomu.jmcomic.core.client.impl;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.jukomu.jmcomic.api.enums.Category;
+import io.github.jukomu.jmcomic.api.enums.FavoriteFolderType;
 import io.github.jukomu.jmcomic.api.enums.SubCategory;
+import io.github.jukomu.jmcomic.api.enums.VoteType;
 import io.github.jukomu.jmcomic.api.exception.*;
 import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
@@ -18,15 +20,16 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.CookieManager;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
 
 /**
  * @author JUKOMU
- * @Description: JmClient 接口的HTML实现
+ * @Description: JmClient 接口的 HTML 实现。
+ * <p>
+ * 模拟浏览器访问禁漫网页端（HTML）来获取数据，不需要 App 签名认证。
+ * 功能相对较少，主要支持本子/章节获取、搜索、收藏、评论、登录等基础功能。
+ * 不支持的操作会抛 UnsupportedOperationException，建议改用 JmApiClient。
  * @Project: jmcomic-api-java
  * @Date: 2025/10/28
  */
@@ -48,7 +51,10 @@ public final class JmHtmlClient extends AbstractJmClient {
         logger.info("开始获取最新域名列表");
         String oldDomains = domainManager.getDomains().toString();
 
-        // 尝试第一种方法：从JmPub页面获取
+        /*
+         * HTML 客户端没有专用域名服务器，需要从其他地方捞域名。
+         * 首选从 JmPub 页面获取，不行就从 GitHub Pages 拿。
+         */
         try {
             logger.info("尝试从 JmPub 页面获取域名...");
             List<String> newDomains = getHtmlDomainAll();
@@ -62,14 +68,13 @@ public final class JmHtmlClient extends AbstractJmClient {
             logger.warn("从 JmPub 获取域名列表失败: {}", e.getMessage());
         }
 
-        // 如果第一种方法失败，尝试第二种方法：从Github页面获取
         try {
             logger.info("尝试从 Github 页面获取域名...");
             List<String> newDomains = getHtmlDomainAllViaGithub();
             if (!newDomains.isEmpty()) {
                 domainManager.updateDomains(newDomains);
                 logger.info("获取最新域名列表成功 (Github): {} -> {}", oldDomains, newDomains);
-                return; // 成功，结束
+                return;
             }
             logger.warn("从 Github 获取的域名列表为空。");
         } catch (Exception e) {
@@ -101,6 +106,11 @@ public final class JmHtmlClient extends AbstractJmClient {
         cacheJmAlbum(jmAlbum);
         return jmAlbum;
 
+    }
+
+    @Override
+    public JmAlbum getComicRead(String comicId) {
+        throw new UnsupportedOperationException("Getting comic read data via HTML client is not currently supported. Use JmApiClient instead.");
     }
 
     @Override
@@ -140,21 +150,18 @@ public final class JmHtmlClient extends AbstractJmClient {
                 .addQueryParameter("o", query.getOrderBy().getValue())
                 .addQueryParameter("t", query.getTimeOption().getValue());
 
-        try {
-            JmHtmlResponse jmHtmlResponse = executeGetRequest(urlBuilder.build());
-            // 检查返回的页面是否是详情页而不是列表页
-            if (isAlbumDetailPage(jmHtmlResponse.getHtml())) {
-                JmAlbum album = HtmlParser.parseAlbum(jmHtmlResponse.getHtml());
-                // 将单个 Album 包装成 SearchPage
-                JmAlbumMeta meta = new JmAlbumMeta(album.id(), album.title(), album.authors(), album.tags());
-                return new JmSearchPage(1, 1, 1, List.of(meta));
-            } else {
-                return HtmlParser.parseSearchPage(jmHtmlResponse.getHtml(), query.getPage());
-            }
-        } catch (ResponseException e) {
-            throw new ResponseException("Failed to search " + query + ": " + e.getMessage());
-        } catch (NetworkException e) {
-            throw new NetworkException("Failed to search " + query + " due to I/O error", e);
+        JmHtmlResponse jmHtmlResponse = executeGetRequest(urlBuilder.build());
+        /*
+         * 搜索条件精确匹配到唯一本子时，禁漫会 302 到详情页而不是返回列表，
+         * 这时需把详情页包装成单条结果的 SearchPage。
+         */
+        if (isAlbumDetailPage(jmHtmlResponse.getHtml())) {
+            JmAlbum album = HtmlParser.parseAlbum(jmHtmlResponse.getHtml());
+            // 将单个 Album 包装成 SearchPage
+            JmAlbumMeta meta = new JmAlbumMeta(album.id(), album.title(), album.authors(), album.tags());
+            return new JmSearchPage(1, 1, 1, List.of(meta));
+        } else {
+            return HtmlParser.parseSearchPage(jmHtmlResponse.getHtml(), query.getPage());
         }
     }
 
@@ -170,14 +177,8 @@ public final class JmHtmlClient extends AbstractJmClient {
                 .addQueryParameter("o", query.getOrderBy().getValue())
                 .addQueryParameter("t", query.getTimeOption().getValue());
 
-        try {
-            JmHtmlResponse jmHtmlResponse = executeGetRequest(urlBuilder.build());
-            return HtmlParser.parseSearchPage(jmHtmlResponse.getHtml(), query.getPage());
-        } catch (ResponseException e) {
-            throw new ResponseException("Failed to search " + query + ": " + e.getMessage());
-        } catch (NetworkException e) {
-            throw new NetworkException("Failed to search " + query + " due to I/O error", e);
-        }
+        JmHtmlResponse jmHtmlResponse = executeGetRequest(urlBuilder.build());
+        return HtmlParser.parseSearchPage(jmHtmlResponse.getHtml(), query.getPage());
     }
 
     @Override
@@ -200,16 +201,10 @@ public final class JmHtmlClient extends AbstractJmClient {
             url.addQueryParameter("folder", String.valueOf(folderId));
         }
 
-        try {
-            JmHtmlResponse jmHtmlResponse = executeGetRequest(url.build());
-            JmFavoritePage jmFavoritePage = HtmlParser.parseFavoritePage(jmHtmlResponse.getHtml(), page);
-            cacheJmFavoritePage(jmFavoritePage);
-            return jmFavoritePage;
-        } catch (ResponseException e) {
-            throw new ResponseException("Failed to get favorites: " + e.getMessage());
-        } catch (NetworkException e) {
-            throw new NetworkException("Failed to get favorites due to I/O error", e);
-        }
+        JmHtmlResponse jmHtmlResponse = executeGetRequest(url.build());
+        JmFavoritePage jmFavoritePage = HtmlParser.parseFavoritePage(jmHtmlResponse.getHtml(), page);
+        cacheJmFavoritePage(jmFavoritePage);
+        return jmFavoritePage;
     }
 
     // == 会话管理层实现 ==
@@ -220,6 +215,11 @@ public final class JmHtmlClient extends AbstractJmClient {
                 .addPathSegment("login")
                 .build();
 
+        /*
+         * 禁漫网页端登录需要提交 HTML 表单格式的 POST 请求，
+         * 包含 username、password 以及记住登录状态的复选框参数。
+         * 登录成功后会设置会话 Cookie，后续请求自动携带。
+         */
         RequestBody formBody = new FormBody.Builder()
                 .add("username", username)
                 .add("password", password)
@@ -228,20 +228,14 @@ public final class JmHtmlClient extends AbstractJmClient {
                 .add("submit_login", "")
                 .build();
 
-        try {
-            JmHtmlResponse jmHtmlResponse = executePostRequest(url, formBody);
-            super.cacheUsername(username);
-            // TODO 获取用户信息
-            return JmUserInfo.partial(username);
-        } catch (ResponseException e) {
-            throw new ResponseException("Login failed: " + e.getMessage());
-        } catch (NetworkException e) {
-            throw new NetworkException("Login failed due to I/O error", e);
-        }
+        JmHtmlResponse jmHtmlResponse = executePostRequest(url, formBody);
+        super.cacheUsername(username);
+        // TODO 获取用户信息（当前 HTML 客户端仅缓存用户名）
+        return JmUserInfo.partial(username);
     }
 
     @Override
-    public JmComment postComment(String entityId, String commentText, String status) {
+    public JmComment postComment(String entityId, String commentText) {
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment("ajax")
                 .addPathSegment("album_comment")
@@ -254,11 +248,13 @@ public final class JmHtmlClient extends AbstractJmClient {
         formBuilder.add("originator", "")
                 .add("status", "true");
 
+        JmHtmlResponse jmHtmlResponse = executePostRequest(url, formBuilder.build());
         try {
-            JmHtmlResponse jmHtmlResponse = executePostRequest(url, formBuilder.build());
+            /*
+             * 网页端评论接口返回 JSON，只带了评论 ID (cid)，没有完整信息。
+             * 返回的 JmComment 只有部分字段有值。
+             */
             String json = jmHtmlResponse.getHtml();
-            // 解析评论成功后的返回JSON
-            // {"err":false,"cid":"336109","message":"\u8a55\u8ad6\u5df2\u767c\u4f48"}
             JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
 
             boolean err = true;
@@ -273,20 +269,13 @@ public final class JmHtmlClient extends AbstractJmClient {
                 }
                 throw new ResponseException("Failed to post comment :" + message);
             }
-            /*
-              API响应中只包含评论ID (cid)，不包含新评论的完整信息。
-              因此，返回的 JmComment 对象是部分填充的，
-              其中 userId, username, postDate 等字段将为空或默认值。
-             */
             String cid = "";
             if (jsonObject.has("cid") && !jsonObject.get("cid").isJsonNull()) {
                 cid = jsonObject.get("cid").getAsString();
             }
-            return new JmComment(cid, "", getLoggedInUserName(), commentText, "");
+            return new JmComment(cid, "", getLoggedInUserName(), commentText, "", "", "", entityId, "", List.of(), 0, 0);
         } catch (ResponseException e) {
-            throw new ResponseException("Post comment failed" + e.getMessage());
-        } catch (NetworkException e) {
-            throw new NetworkException("Post comment request failed", e);
+            throw e;
         } catch (Exception e) {
             throw new ParseResponseException("Failed to parse post comment response", e);
         }
@@ -308,11 +297,9 @@ public final class JmHtmlClient extends AbstractJmClient {
                 .add("is_reply", "1")
                 .add("forum_subject", "1");
 
+        JmHtmlResponse jmHtmlResponse = executePostRequest(url, formBuilder.build());
         try {
-            JmHtmlResponse jmHtmlResponse = executePostRequest(url, formBuilder.build());
             String json = jmHtmlResponse.getHtml();
-            // 解析评论成功后的返回JSON
-            // {"err":false,"cid":"336109","message":"\u8a55\u8ad6\u5df2\u767c\u4f48"}
             JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
 
             boolean err = true;
@@ -327,27 +314,30 @@ public final class JmHtmlClient extends AbstractJmClient {
                 }
                 throw new ResponseException("Failed to post comment :" + message);
             }
-            /*
-              API响应中只包含评论ID (cid)，不包含新评论的完整信息。
-              因此，返回的 JmComment 对象是部分填充的，
-              其中 userId, username, postDate 等字段将为空或默认值。
-             */
             String cid = "";
             if (jsonObject.has("cid") && !jsonObject.get("cid").isJsonNull()) {
                 cid = jsonObject.get("cid").getAsString();
             }
-            return new JmComment(cid, "", getLoggedInUserName(), commentText, "");
+            return new JmComment(cid, "", getLoggedInUserName(), commentText, "", "", "", entityId, "", List.of(), 0, 0);
         } catch (ResponseException e) {
-            throw new ResponseException("Post comment failed" + e.getMessage());
-        } catch (NetworkException e) {
-            throw new NetworkException("Post comment request failed", e);
+            throw e;
         } catch (Exception e) {
             throw new ParseResponseException("Failed to parse reply comment response", e);
         }
     }
 
     @Override
-    public void addAlbumToFavorite(String albumId, String folderId) {
+    public JmComment postBlogComment(String albumId, String blogId, String commentText) {
+        throw new UnsupportedOperationException("Posting blog comment via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmComment replyToBlogComment(String albumId, String blogId, String commentText, String parentCommentId) {
+        throw new UnsupportedOperationException("Replying to blog comment via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public void toggleAlbumFavorite(String albumId, String folderId) {
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment("ajax")
                 .addPathSegment("favorite_album")
@@ -355,33 +345,230 @@ public final class JmHtmlClient extends AbstractJmClient {
                 .addQueryParameter("fid", folderId == null ? "0" : folderId)
                 .build();
 
+        JmHtmlResponse jmHtmlResponse = executeGetRequest(url);
         try {
-            JmHtmlResponse jmHtmlResponse = executeGetRequest(url);
-            // 解析返回的简单JSON，检查状态
-            try {
-                JsonObject jsonObject = JsonParser.parseString(jmHtmlResponse.getHtml()).getAsJsonObject();
+            /*
+             * 网页端收藏接口返回 JSON，status=1 成功，=0 表示已收藏过。
+             */
+            JsonObject jsonObject = JsonParser.parseString(jmHtmlResponse.getHtml()).getAsJsonObject();
 
-                int status = 0;
-                if (jsonObject.has("status") && !jsonObject.get("status").isJsonNull()) {
-                    status = jsonObject.get("status").getAsInt();
-                }
+            int status = 0;
+            if (jsonObject.has("status") && !jsonObject.get("status").isJsonNull()) {
+                status = jsonObject.get("status").getAsInt();
+            }
 
-                if (status != 1) {
-                    String message = "";
-                    if (jsonObject.has("msg") && !jsonObject.get("msg").isJsonNull()) {
-                        message = jsonObject.get("msg").getAsString();
-                    }
-                    // 已经在收藏夹中
-                    throw new ResponseException("Failed to add to favorites: " + message);
+            if (status != 1) {
+                String message = "";
+                if (jsonObject.has("msg") && !jsonObject.get("msg").isJsonNull()) {
+                    message = jsonObject.get("msg").getAsString();
                 }
-            } catch (Exception e) {
-                throw new ParseResponseException("Failed to parse 'add to favorite' response", e);
+                throw new ResponseException("Failed to toggle favorite: " + message);
             }
         } catch (ResponseException e) {
-            throw new ResponseException("Failed to add to favorites: " + e.getMessage());
-        } catch (NetworkException e) {
-            throw new NetworkException("Failed to add to favorites", e);
+            throw e;
+        } catch (Exception e) {
+            throw new ParseResponseException("Failed to parse 'toggle favorite' response", e);
         }
+    }
+
+    @Override
+    public JmCommentList getComments(ForumQuery query) {
+        throw new UnsupportedOperationException("Getting comment list via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    @Deprecated
+    public JmVoteResult voteComment(String commentId, VoteType voteType) {
+        throw new UnsupportedOperationException("Voting on comments via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public void toggleAlbumLike(String albumId) {
+        throw new UnsupportedOperationException("Toggling album like via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public List<String> getHotTags() {
+        throw new UnsupportedOperationException("Getting hot tags via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmSearchPage getLatest(int page) {
+        throw new UnsupportedOperationException("Getting latest albums via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmAlbumDownloadInfo getAlbumDownloadInfo(String albumId) {
+        throw new UnsupportedOperationException("Getting album download info via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmFavoriteFolderResult manageFavoriteFolder(FavoriteFolderType type, String folderId, String folderName, String albumId) {
+        throw new UnsupportedOperationException("Managing favorite folders via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    // == HTML 客户端暂不实现（使用 JmApiClient） ==
+
+    @Override
+    public Map register(String username, String password, String passwordConfirm, String email) {
+        throw new UnsupportedOperationException("Register via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public void logout() {
+        throw new UnsupportedOperationException("Logout via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public void forgotPassword(String email) {
+        throw new UnsupportedOperationException("Forgot password via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmUserProfile getUserProfile(String uid) {
+        throw new UnsupportedOperationException("Get user profile via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmUserProfile editUserProfile(String uid, Map<String, String> params) {
+        throw new UnsupportedOperationException("Edit user profile via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public List<JmAlbumMeta> getWatchHistory(int page) {
+        throw new UnsupportedOperationException("Get history via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public void deleteWatchHistory(String id) {
+        throw new UnsupportedOperationException("Delete history via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public List<JmAlbumMeta> getRandomRecommend() {
+        throw new UnsupportedOperationException("Get random recommend via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public Map getPromote() {
+        throw new UnsupportedOperationException("Get promote via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmSearchPage getSerialization(int page) {
+        throw new UnsupportedOperationException("Get serialization via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public List<JmTagFavorite> getTagsFavorite() {
+        throw new UnsupportedOperationException("Get tags favorite via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public void addFavoriteTags(List<String> tags) {
+        throw new UnsupportedOperationException("Add favorite tags via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public void removeFavoriteTags(List<String> tags) {
+        throw new UnsupportedOperationException("Remove favorite tags via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmCategoryList getCategoriesList() {
+        throw new UnsupportedOperationException("Get categories list via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    // == 通知/任务/签到/每周必看/设置（暂不实现，用 JmApiClient） ==
+
+    @Override
+    public JmNotificationPage getNotifications() {
+        throw new UnsupportedOperationException("Get notifications via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public void markNotification(String id, int read) {
+        throw new UnsupportedOperationException("Post notification via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public Map getUnreadCount() {
+        throw new UnsupportedOperationException("Get unread count via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public boolean getAlbumSertracking(String id) {
+        throw new UnsupportedOperationException("Get sertracking via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public void setAlbumSertracking(String id) {
+        throw new UnsupportedOperationException("Set sertracking via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmTrackingPage getAlbumTrackingList(int page) {
+        throw new UnsupportedOperationException("Get tracking list via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmTaskList getTasks(String type, String filter) {
+        throw new UnsupportedOperationException("Get tasks via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public Map claimTask(Map<String, String> body) {
+        throw new UnsupportedOperationException("Claim task via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public Map getCoinBuyList(Map<String, String> body) {
+        throw new UnsupportedOperationException("Get coin buy list via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public Map buyComicWithCoin(String comicId) {
+        throw new UnsupportedOperationException("Buy comic with coin via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public Map chargeCoins() {
+        throw new UnsupportedOperationException("Charge coins via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public Map setAdFree(Map<String, String> body) {
+        throw new UnsupportedOperationException("Set ad free via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmDailyCheckInStatus getDailyCheckInStatus(String userId) {
+        throw new UnsupportedOperationException("Get daily checkin status via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public void doDailyCheckin(String userId, String dailyId) {
+        throw new UnsupportedOperationException("Do daily checkin via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public List getDailyCheckInOptions(String userId) {
+        throw new UnsupportedOperationException("Get daily checkin options via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public List filterDailyCheckInList(String filter) {
+        throw new UnsupportedOperationException("Filter daily checkin list via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmWeeklyPicksList getWeeklyPicksList() {
+        throw new UnsupportedOperationException("Get weekly picks list via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmWeeklyPicksDetail getWeeklyPicksDetail(String categoryId) {
+        throw new UnsupportedOperationException("Get weekly picks detail via HTML client is not currently supported. Use JmApiClient instead.");
     }
 
     // == 辅助方法 ==
@@ -435,9 +622,12 @@ public final class JmHtmlClient extends AbstractJmClient {
     }
 
     /**
-     * 通过GitHub页面获取所有禁漫网页域名。
+     * 从 GitHub Pages 并发获取所有禁漫域名。
+     * GitHub 上多个索引页（/go/300.html ~ /go/309.html）各列了一些可用域名，
+     * 汇总去重后返回，同时过滤掉 jm365 开头的（实测不可用）。
+     * 请求不跟随重定向，因为中间域名可能只返回 302。
      *
-     * @return 禁漫网页域名Set。
+     * @return 禁漫网页域名列表
      */
     public List<String> getHtmlDomainAllViaGithub() {
         String template = "https://jmcmomic.github.io/go/";
@@ -448,6 +638,7 @@ public final class JmHtmlClient extends AbstractJmClient {
             urlsToFetch.add(template + i + ".html");
         }
 
+        // 并发数取"URL数量"和"CPU核心数*2"的较小值，避免创建过多线程
         int poolSize = Math.min(urlsToFetch.size(), Runtime.getRuntime().availableProcessors() * 2);
         ExecutorService executor = Executors.newFixedThreadPool(poolSize);
 
@@ -480,12 +671,12 @@ public final class JmHtmlClient extends AbstractJmClient {
                 futures.add(future);
             }
 
+            // 等待所有并发请求完成
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
         } finally {
             executor.shutdown();
             try {
-                // 设置超时时间
                 if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
                     executor.shutdownNow();
                 }
@@ -536,6 +727,13 @@ public final class JmHtmlClient extends AbstractJmClient {
         return executePostRequest(url, requestBody, true);
     }
 
+    /**
+     * 往 URL 路径里追加分类信息（网页端用路径传分类，和 API 客户端的查询参数不同）。
+     *
+     * @param builder     URL 构建器
+     * @param category    主分类，null 或 ALL 时不追加
+     * @param subCategory 子分类，可选
+     */
     private void buildCategoryPath(HttpUrl.Builder builder, Category category, SubCategory subCategory) {
         if (category == null || category == Category.ALL) {
             return;
@@ -546,9 +744,11 @@ public final class JmHtmlClient extends AbstractJmClient {
         }
     }
 
+    /**
+     * 判断页面是不是本子详情页。精确匹配时禁漫会 302 到详情页，
+     * 详情页有 id="book-name"，列表页没有。
+     */
     private boolean isAlbumDetailPage(String html) {
-        // 通过检查页面中是否存在详情页特有的、唯一的元素来判断
-        // 例如，ID为 "book-name" 的元素。
         return html.contains("id=\"book-name\"");
     }
 }

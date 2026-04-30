@@ -54,8 +54,7 @@ public final class HtmlParser {
                 ParseHelper.selectFirstText(doc, "h1#book-name", "album title"),
                 ParseHelper.selectFirstText(doc, "h2:contains(叙述：), h2:contains(敘述：)", "album description").replace("叙述：", "").trim(),
                 extractVarFromScript(doc, "scramble_id"),
-                // 日期
-                extractDate(doc, "上架日期"),
+                // 添加时间 (HTML 中为 "更新日期")
                 extractDate(doc, "更新日期"),
                 // 页数
                 parsePageCount(doc),
@@ -65,6 +64,10 @@ public final class HtmlParser {
                 extractViewsCount(doc),
                 // 评论数
                 ParseHelper.parseIntOrDefault(ParseHelper.selectFirstText(doc, "#total_video_comments", "comment count"), 0),
+                // 封面/分类 (HTML 解析不支持)
+                null,
+                null,
+                null,
                 // 作者/作品/演员/标签
                 parseTagLikeList(doc, "author", "author"),
                 parseTagLikeList(doc, "works", "works"),
@@ -73,7 +76,15 @@ public final class HtmlParser {
                 // 相关作品
                 parseRelatedAlbums(doc),
                 // 章节列表
-                parsePhotoMetas(doc, id)
+                parsePhotoMetas(doc, id),
+                // HTML 解析不支持以下字段
+                "0",                  // seriesId
+                false,                // isFavorite
+                false,                // liked
+                false,                // isAids
+                Collections.emptyList(), // images
+                "",                   // price
+                ""                    // purchased
         );
     }
 
@@ -241,7 +252,7 @@ public final class HtmlParser {
             ));
         }
         // 章节列表可能是倒序的，需要反转
-        java.util.Collections.reverse(metas);
+        Collections.reverse(metas);
         return metas;
     }
 

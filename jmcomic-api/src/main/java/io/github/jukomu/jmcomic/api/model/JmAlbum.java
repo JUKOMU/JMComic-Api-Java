@@ -26,13 +26,9 @@ public record JmAlbum(
          */
         String scrambleId,
         /*
-          上架日期字符串。
+          添加时间（Unix 时间戳字符串），取自 API addtime 字段。
          */
-        String releaseDate,
-        /*
-          最后更新日期字符串。
-         */
-        String updateDate,
+        String addTime,
         /*
           总页数。
          */
@@ -49,6 +45,18 @@ public record JmAlbum(
           评论总数。
          */
         int commentCount,
+        /*
+          封面图片URL。
+         */
+        String image,
+        /*
+          主分类信息。
+         */
+        JmCategoryMeta category,
+        /*
+          子分类信息。
+         */
+        JmCategoryMeta subCategory,
         /*
           作者列表。
          */
@@ -73,7 +81,35 @@ public record JmAlbum(
           此本子包含的所有章节的元数据列表。
           要获取章节的完整信息（如图集），需要使用 JmClient.getPhoto()。
          */
-        List<JmPhotoMeta> photoMetas
+        List<JmPhotoMeta> photoMetas,
+        /*
+          系列ID。"0" 表示单行本，非 "0" 表示多章节本子。
+         */
+        String seriesId,
+        /*
+          当前用户是否已收藏该本子。
+         */
+        boolean isFavorite,
+        /*
+          当前用户是否已点赞该本子。
+         */
+        boolean liked,
+        /*
+          是否为成人内容标识。
+         */
+        boolean isAids,
+        /*
+          本子包含的图片列表，由 getComicRead 填充。
+         */
+        List<JmImage> images,
+        /*
+          价格，通常为空字符串，部分本子可能有数据。
+         */
+        String price,
+        /*
+          是否已购买，通常为空字符串，部分本子可能有数据。
+         */
+        String purchased
 ) {
     /**
      * 获取本子ID。
@@ -112,21 +148,12 @@ public record JmAlbum(
     }
 
     /**
-     * 获取上架日期字符串。
+     * 获取添加时间（Unix 时间戳字符串）。
      *
-     * @return 上架日期字符串。
+     * @return 添加时间（Unix 时间戳字符串）。
      */
-    public String getReleaseDate() {
-        return releaseDate;
-    }
-
-    /**
-     * 获取最后更新日期字符串。
-     *
-     * @return 最后更新日期字符串。
-     */
-    public String getUpdateDate() {
-        return updateDate;
+    public String getAddTime() {
+        return addTime;
     }
 
     /**
@@ -163,6 +190,33 @@ public record JmAlbum(
      */
     public int getCommentCount() {
         return commentCount;
+    }
+
+    /**
+     * 获取封面图片URL。
+     *
+     * @return 封面图片URL。
+     */
+    public String getImage() {
+        return image;
+    }
+
+    /**
+     * 获取主分类信息。
+     *
+     * @return 主分类信息。
+     */
+    public JmCategoryMeta getCategory() {
+        return category;
+    }
+
+    /**
+     * 获取子分类信息。
+     *
+     * @return 子分类信息。
+     */
+    public JmCategoryMeta getSubCategory() {
+        return subCategory;
     }
 
     /**
@@ -217,6 +271,69 @@ public record JmAlbum(
      */
     public List<JmPhotoMeta> getPhotoMetas() {
         return photoMetas;
+    }
+
+    /**
+     * 获取系列ID。
+     *
+     * @return 系列ID，"0" 表示单行本。
+     */
+    public String getSeriesId() {
+        return seriesId;
+    }
+
+    /**
+     * 获取当前用户是否已收藏。
+     *
+     * @return true 表示已收藏。
+     */
+    public boolean isFavorite() {
+        return isFavorite;
+    }
+
+    /**
+     * 获取当前用户是否已点赞。
+     *
+     * @return true 表示已点赞。
+     */
+    public boolean isLiked() {
+        return liked;
+    }
+
+    /**
+     * 获取是否为成人内容标识。
+     *
+     * @return true 表示为成人内容。
+     */
+    public boolean isAids() {
+        return isAids;
+    }
+
+    /**
+     * 获取本子包含的图片列表。
+     *
+     * @return 图片列表，由 getComicRead 填充。
+     */
+    public List<JmImage> getImages() {
+        return images;
+    }
+
+    /**
+     * 获取价格。
+     *
+     * @return 价格字符串，通常为空。
+     */
+    public String getPrice() {
+        return price;
+    }
+
+    /**
+     * 获取是否已购买。
+     *
+     * @return 是否已购买，通常为空字符串。
+     */
+    public String getPurchased() {
+        return purchased;
     }
 
     /**
