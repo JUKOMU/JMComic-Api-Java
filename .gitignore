@@ -35,5 +35,9 @@ build/
 ### VS Code ###
 .vscode/
 
+### MkDocs ###
+docs/site/
+docs/.venv/
+
 ### Mac OS ###
 .DS_Store

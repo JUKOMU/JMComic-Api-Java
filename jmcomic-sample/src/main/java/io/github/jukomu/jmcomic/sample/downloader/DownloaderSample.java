@@ -40,7 +40,7 @@ public class DownloaderSample {
             // ==================== 旧 API - 简洁模式 ====================
             System.out.println("========== 旧 API：直接下载 ==========");
             downloadAlbumSimple(client, "1064000");
-            downloadPhotoSimple(client, "540709", 0);
+            downloadPhotoSimple(client, "540709", 1);
 
             // ==================== 新 API - 进度回调 ====================
             System.out.println("\n========== 新 API：本子下载 + 进度回调 ==========");

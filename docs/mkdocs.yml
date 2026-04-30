@@ -1,0 +1,84 @@
+site_name: JMComic API for Java
+repo_url: https://github.com/JUKOMU/JMComic-Api-Java
+repo_name: JUKOMU/JMComic-Api-Java
+
+theme:
+  name: material
+  language: zh
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: 切换到浅色主题
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: 切换到深色主题
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: 主题跟随系统
+  features:
+    - navigation.sections
+    - content.code.copy
+    - content.code.select
+    - search.suggest
+    - search.highlight
+    - search.share
+    - navigation.tabs
+    - navigation.top
+
+nav:
+  - 首页: index.md
+  - 快速上手:
+      - 安装与依赖: quickstart/installation.md
+      - 下载第一个本子: quickstart/first-download.md
+      - 获取数据示例: quickstart/fetch-data.md
+  - 配置指南: configuration.md
+  - 核心功能:
+      - 漫画: features/comic.md
+      - 下载: features/download.md
+      - 评论系统: features/comment.md
+      - 收藏管理: features/favorite.md
+      - 用户与签到: features/user-checkin.md
+      - 小说子系统: features/novel.md
+      - 创作者子系统: features/creator.md
+      - 发现与浏览: features/discovery.md
+      - 通知与追踪: features/notification.md
+  - 进阶用法:
+      - 自定义下载路径: advanced/custom-path.md
+      - 自定义线程池: advanced/custom-executor.md
+      - 进度回调: advanced/progress-callback.md
+      - 模块化集成: advanced/modular-integration.md
+  - API 参考:
+      - JmClient 接口: api/jmclient.md
+      - JmDownloadClient 接口: api/jmdownloadclient.md
+      - JmNovelClient 接口: api/jmnovelclient.md
+      - JmCreatorClient 接口: api/jmcreatorclient.md
+      - 数据模型一览: api/models.md
+      - 枚举类型: api/enums.md
+      - 异常类型: api/exceptions.md
+  - Android 集成: android.md
+  - 版本说明: changelog.md
+
+plugins:
+  - search
+
+markdown_extensions:
+  - attr_list
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+
+docs_dir: sources
