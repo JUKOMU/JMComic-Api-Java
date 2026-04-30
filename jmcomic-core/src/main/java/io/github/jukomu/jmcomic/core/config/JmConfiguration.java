@@ -282,13 +282,48 @@ public final class JmConfiguration {
             if (props.containsKey("client.type")) {
                 this.clientType(ClientType.valueOf(props.getProperty("client.type").toUpperCase()));
             }
+            if (props.containsKey("api.domains")) {
+                this.apiDomains(Arrays.asList(props.getProperty("api.domains").split("\\s*,\\s*")));
+            }
+            if (props.containsKey("html.domains")) {
+                this.htmlDomains(Arrays.asList(props.getProperty("html.domains").split("\\s*,\\s*")));
+            }
             if (props.containsKey("proxy.host") && props.containsKey("proxy.port")) {
                 this.proxy(props.getProperty("proxy.host"), Integer.parseInt(props.getProperty("proxy.port")));
+            }
+            // headers: 所有以 "header." 开头的 key
+            for (String key : props.stringPropertyNames()) {
+                if (key.startsWith("header.")) {
+                    String headerKey = key.substring("header.".length());
+                    if (!headerKey.isEmpty()) {
+                        this.header(headerKey, props.getProperty(key));
+                    }
+                }
+            }
+            if (props.containsKey("timeout.seconds")) {
+                this.timeout(Duration.ofSeconds(Long.parseLong(props.getProperty("timeout.seconds"))));
             }
             if (props.containsKey("retry.times")) {
                 this.retryTimes(Integer.parseInt(props.getProperty("retry.times")));
             }
-            // 可以根据需要添加更多从 properties 加载的配置项
+            if (props.containsKey("download.thread.pool.size")) {
+                this.downloadThreadPoolSize(Integer.parseInt(props.getProperty("download.thread.pool.size")));
+            }
+            if (props.containsKey("cache.size")) {
+                this.cacheSize(Integer.parseInt(props.getProperty("cache.size")));
+            }
+            if (props.containsKey("domain.probe.interval.ms")) {
+                this.domainProbeIntervalMs(Long.parseLong(props.getProperty("domain.probe.interval.ms")));
+            }
+            if (props.containsKey("domain.probe.timeout.ms")) {
+                this.domainProbeTimeoutMs(Long.parseLong(props.getProperty("domain.probe.timeout.ms")));
+            }
+            if (props.containsKey("image.timeout.seconds")) {
+                this.imageTimeout(Duration.ofSeconds(Long.parseLong(props.getProperty("image.timeout.seconds"))));
+            }
+            if (props.containsKey("close.timeout.ms")) {
+                this.closeTimeoutMs(Long.parseLong(props.getProperty("close.timeout.ms")));
+            }
 
             return this;
         }
