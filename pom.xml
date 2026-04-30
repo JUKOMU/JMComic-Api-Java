@@ -6,7 +6,7 @@
 
     <groupId>io.github.jukomu</groupId>
     <artifactId>jmcomic-api-java</artifactId>
-    <version>0.0.4</version>
+    <version>1.0.0</version>
     <packaging>pom</packaging>
     <modules>
         <module>jmcomic-api</module>

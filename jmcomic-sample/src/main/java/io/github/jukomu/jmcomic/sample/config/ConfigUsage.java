@@ -26,18 +26,22 @@ public class ConfigUsage {
                 .clientType(ClientType.HTML)
                 .proxy("127.0.0.1", 7890)
                 .timeout(Duration.ofSeconds(60))
+                .imageTimeout(Duration.ofSeconds(120))
                 .retryTimes(10)
                 .downloadThreadPoolSize(12)
-                .imageTimeout(Duration.ofSeconds(120))
+                .cacheSize(100 * 1024 * 1024)
                 .closeTimeoutMs(30_000)
                 .domainProbeIntervalMs(600_000)
                 .domainProbeTimeoutMs(3000)
-                .cacheSize(100 * 1024 * 1024)
                 .build();
         System.out.println("客户端类型: " + advanced.getClientType());
         System.out.println("线程池大小: " + advanced.getDownloadThreadPoolSize());
-        System.out.println("超时: " + advanced.getTimeout().getSeconds() + "s");
+        System.out.println("请求超时: " + advanced.getTimeout().getSeconds() + "s");
+        System.out.println("图片超时: " + advanced.getImageTimeout().getSeconds() + "s");
         System.out.println("重试次数: " + advanced.getRetryTimes());
+        System.out.println("关闭超时: " + advanced.getCloseTimeoutMs() + "ms");
+        System.out.println("域名探活间隔: " + advanced.getDomainProbeIntervalMs() + "ms");
+        System.out.println("域名探活超时: " + advanced.getDomainProbeTimeoutMs() + "ms");
 
         // 用完整配置创建客户端，验证配置是否生效
         try (AbstractJmClient client = JmComic.newHtmlClient(advanced)) {
