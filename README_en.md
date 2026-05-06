@@ -8,7 +8,7 @@
 
 ![Java](https://img.shields.io/badge/Java-17+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Version](https://img.shields.io/badge/Version-1.0.0-brightgreen.svg)
+![Version](https://img.shields.io/badge/Version-1.1.0-brightgreen.svg)
 
 **A Java API library for fetching data from JMComic**
 
@@ -59,64 +59,65 @@ This module contains the specific implementation logic for all features, handlin
 ### Feature Categories
 
 **Comics**
-* Album details — complete information including chapter metadata, tags, authors
-* Chapter reading — all images within a chapter with download URLs
-* Search — multi-dimensional filtering by keyword, category, sort order, time range
-* Category ranking — browse albums by category ranking
-* Category list — category tree and tag blocks
+* `Album details — complete information including chapter metadata, tags, authors`
+* `Chapter reading — all images within a chapter with download URLs`
+* `Search — multi-dimensional filtering by keyword, category, sort order, time range`
+* `Category ranking — browse albums by category ranking`
+* `Category list — category tree and tag blocks`
 
 **Download**
-* Concurrent download — built-in thread pool scheduling for parallel chapter/album downloads
-* Chain-style API — `client.download(album).withProgress(cb).withPath(path).execute()`
-* Progress callback — real-time image/chapter completion status via progress callback
-* Custom paths — three granularity levels of path generators
-* Custom thread pool — inject external thread pool for full concurrency control
+* `Concurrent download — built-in thread pool scheduling for parallel chapter/album downloads`
+* `Chain-style API — `client.download(album).withProgress(cb).withPath(path).execute()`
+* `Progress callback — real-time image/chapter completion status via progress callback`
+* `Task system — pause/resume/cancel, state machine, observer pattern, task manager`
+* `Custom paths — three granularity levels of path generators`
+* `Custom thread pool — inject external thread pool for full concurrency control`
 
 **User**
-* Login/logout — username/password login to obtain user information
-* Profile — view/edit user profile, update nickname and other fields
+* `Login/logout — username/password login to obtain user information`
+* `Profile — view/edit user profile, update nickname and other fields`
 
 **Comments**
-* Comment listing — supports multiple entity types: comic, novel, novel chapter, blog, user
-* Post/reply — post and reply to comments on comics, blogs, and novels
+* `Comment listing — supports multiple entity types: comic, novel, novel chapter, blog, user`
+* `Post/reply — post and reply to comments on comics, blogs, and novels`
 
 **Favorites**
-* Favorites list — browse favorites filtered by folder/page
-* Folder management — toggle favorite status, create/delete/rename/move folders
-* Tag management — get/add/remove favorite tags
+* `Favorites list — browse favorites filtered by folder/page`
+* `Folder management — toggle favorite status, create/delete/rename/move folders`
+* `Tag management — get/add/remove favorite tags`
 
 **Novels**
-* Novel list — browse with sort criteria
-* Novel detail — chapter metadata and related info
-* Chapter reading — chapter content
-* Novel search — keyword search for novels
-* Novel comments/favorites — like, favorite, post/reply to comments
+* `Novel list — browse with sort criteria`
+* `Novel detail — chapter metadata and related info`
+* `Chapter reading — chapter content`
+* `Novel search — keyword search for novels`
+* `Novel comments/favorites — like, favorite, post/reply to comments`
 
 **Creators**
-* Author list — browse creators with pagination
-* Work browsing — filter works by language and source
-* Work detail — work information and detail
+* `Author list — browse creators with pagination`
+* `Work browsing — filter works by language and source`
+* `Work detail — work information and detail`
 
 **Daily Check-in**
-* Check-in status — daily progress and event information
-* Perform check-in — complete daily check-in
-* Check-in history — query historical check-in records
+* `Check-in status — daily progress and event information`
+* `Perform check-in — complete daily check-in`
+* `Check-in history — query historical check-in records`
 
 **Notifications & Tracking**
-* Notification list — system notifications
-* Read/unread — mark notification status
-* Serial tracking — browse tracking list, set/check tracking status
+* `Notification list — system notifications`
+* `Read/unread — mark notification status`
+* `Serial tracking — browse tracking list, set/check tracking status`
 
 **Discovery**
-* Hot tags — hot search keywords
-* Latest updates — paginated latest albums
-* Random recommendations — recommendation list
-* Weekly picks — weekly picks categories and details
-* Promotions — banner content
+* `Hot tags — hot search keywords`
+* `Latest updates — paginated latest albums`
+* `Random recommendations — recommendation list`
+* `Weekly picks — weekly picks categories and details`
+* `Promotions — banner content`
 
 **Other**
-* Watch history — get/delete watch history
-* Task system — fetch task list
+* `Watch history — get/delete watch history`
+* `Task system — fetch task list`
 
 ### Future Plans
 
@@ -144,7 +145,7 @@ The core of this project is a **data acquisition and management tool**, not a ri
     <dependency>
         <groupId>io.github.jukomu</groupId>
         <artifactId>jmcomic-api</artifactId>
-        <version>1.0.0</version>
+        <version>1.1.0</version>
     </dependency>
    ```
 * Install jmcomic-core
@@ -152,7 +153,7 @@ The core of this project is a **data acquisition and management tool**, not a ri
     <dependency>
         <groupId>io.github.jukomu</groupId>
         <artifactId>jmcomic-core</artifactId>
-        <version>1.0.0</version>
+        <version>1.1.0</version>
     </dependency>
    ```
 * (Android platform) Install jmcomic-android-support
@@ -160,7 +161,7 @@ The core of this project is a **data acquisition and management tool**, not a ri
     <dependency>
         <groupId>io.github.jukomu</groupId>
         <artifactId>jmcomic-android-support</artifactId>
-        <version>1.0.0</version>
+        <version>1.1.0</version>
     </dependency>
    ```
 
@@ -288,6 +289,53 @@ try (AbstractJmClient client = JmComic.newApiClient(config)) {
     myExecutor.shutdown();
     myExecutor.awaitTermination(1, TimeUnit.MINUTES);
 }
+```
+
+### Download Task System
+
+State-machine-based task management with pause/resume/cancel and observer notifications:
+
+```java
+import io.github.jukomu.jmcomic.api.download.task.BaseDownloadTask;
+import io.github.jukomu.jmcomic.api.download.IDownloadManager;
+import io.github.jukomu.jmcomic.api.download.task.TaskObserver;
+import io.github.jukomu.jmcomic.api.download.enums.TaskState;
+
+// Create a download task (does not start immediately)
+BaseDownloadTask task = client.createDownloadTask(album, Path.of("downloads"));
+
+// Register observers
+task.addObserver(new TaskObserver() {
+    @Override
+    public void onStateChanged(BaseDownloadTask t, TaskState state) {
+        System.out.println("State changed: " + state);
+    }
+    @Override
+    public void onProgressUpdate(BaseDownloadTask t, DownloadProgress p) {
+        System.out.printf("Progress: %d/%d images%n", p.completedImages(), p.totalImages());
+    }
+    @Override
+    public void onFinished(BaseDownloadTask t, DownloadResult result) {
+        System.out.println("Done: " + result.getSuccessfulFiles().size() + " images");
+    }
+    @Override
+    public void onError(BaseDownloadTask t, Exception e) {
+        System.err.println("Error: " + e.getMessage());
+    }
+});
+
+// Submit and control via manager
+IDownloadManager manager = client.downloadManager();
+manager.submit(task);
+
+// Pause / Resume / Cancel
+manager.pause(task.getTaskId());
+manager.resume(task.getTaskId());
+manager.cancel(task.getTaskId());
+
+// Query tasks
+BaseDownloadTask t = manager.getTask(taskId);
+List<BaseDownloadTask> active = manager.getActiveTasks();
 ```
 
 ### Comment System
@@ -443,3 +491,9 @@ If you want to contribute code, please Fork this project first, make modificatio
 ## License
 
 This project is open-sourced under the [MIT License](LICENSE).
+
+---
+
+## Documentation
+
+Full documentation: [JMComic-Api-Java Docs](https://jmcomic-api-java.readthedocs.io)
