@@ -44,6 +44,24 @@ client.download(album)
 | `downloadAlbum(JmAlbum, IAlbumPathGenerator, ExecutorService)` | `DownloadResult` | 生成器+线程池 |
 | `downloadAlbum(JmAlbum, IDownloadPathGenerator, ExecutorService)` | `DownloadResult` | 完整路径生成器 |
 
+## 下载任务系统
+
+通过 `createDownloadTask` 创建任务，由 `downloadManager()` 提交和控制：
+
+| 方法 | 返回类型 | 说明 |
+|------|----------|------|
+| `createDownloadTask(JmAlbum, Path)` | `BaseDownloadTask` | 创建本子下载任务（含章节/图片子任务树） |
+| `createDownloadTask(JmPhoto, Path)` | `BaseDownloadTask` | 创建章节下载任务（含图片子任务） |
+| `createDownloadTask(JmImage, Path)` | `BaseDownloadTask` | 创建单图下载任务 |
+| `downloadManager()` | `IDownloadManager` | 获取任务管理器 |
+
+```java
+BaseDownloadTask task = client.createDownloadTask(album, path);
+client.downloadManager().submit(task);
+```
+
+详细用法见 [下载任务系统](../../advanced/download-task-system.md)。
+
 ## 生命周期
 
 `JmDownloadClient` 继承 `AutoCloseable`，使用完毕后需关闭：

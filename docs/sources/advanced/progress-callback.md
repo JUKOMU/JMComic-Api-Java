@@ -17,12 +17,19 @@ client.download(album)
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `completedImages()` | `int` | 已完成图片数 |
+| `completedImages()` | `int` | 已完成的图片数（含成功/跳过/部分成功） |
+| `FailedImages()` | `int` | 已结束但未完成的图片数（含失败/取消） |
 | `totalImages()` | `int` | 总图片数 |
-| `completedPhotos()` | `int` | 已完成章节数 |
+| `completedPhotos()` | `int` | 已完成的章节数（含成功/跳过/部分成功） |
+| `FailedPhotos()` | `int` | 已结束但未完成的章节数（含失败/取消） |
 | `totalPhotos()` | `int` | 总章节数 |
+| `albumId()` | `String` | 本子ID |
 | `albumTitle()` | `String` | 本子标题 |
-| `photoTitle()` | `String` | 当前章节标题 |
+| `photoId()` | `String` | 当前章节ID（章节级有效） |
+| `photoTitle()` | `String` | 当前章节标题（章节级有效） |
+| `isAlbumLevel()` | `boolean` | 是否为本子级下载 |
+| `downloadedBytes()` | `long` | 已下载字节数（用于速度统计） |
+| `createTimestamp()` | `String` | 进度快照创建时间戳 |
 
 ## 完整示例
 

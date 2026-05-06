@@ -106,8 +106,16 @@
 | 类 | 说明 |
 |----|------|
 | `DownloadResult` | 下载结果（成功/失败文件统计） |
-| `DownloadProgress` | 下载进度（图片数、章节数） |
+| `DownloadProgress` | 下载进度（图片/章节计数、字节数、时间戳） |
 | `DownloadRequest` | 链式下载请求对象 |
+
+## 下载任务
+
+| 类 | 说明 |
+|----|------|
+| `BaseDownloadTask` | 下载任务基类（状态机、父子任务树、观察者通知） |
+| `IDownloadManager` | 下载任务管理器接口（submit/pause/resume/cancel/查询） |
+| `TaskObserver` | 任务观察者接口（状态变更/进度/完成/错误回调） |
 
 ## 策略接口
 

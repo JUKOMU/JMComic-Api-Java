@@ -73,6 +73,43 @@ new JmConfiguration.Builder()
 
 设为 `-1` 使用默认值（CPU 核心数）。设为 `1` 即串行下载。
 
+## 下载任务系统
+
+相比直接下载方法，任务系统支持**暂停/恢复/取消**等高级控制：
+
+```java
+JmAlbum album = client.getAlbum("1064000");
+BaseDownloadTask task = client.createDownloadTask(album, Path.of("downloads"));
+
+// 注册观察者
+task.addObserver(new TaskObserver() {
+    @Override public void onStateChanged(BaseDownloadTask t, TaskState state) {
+        System.out.println("状态: " + state);
+    }
+    @Override public void onProgressUpdate(BaseDownloadTask t, DownloadProgress p) {
+        System.out.printf("%d/%d 图片, %d bytes%n",
+                p.completedImages(), p.totalImages(), p.downloadedBytes());
+    }
+    @Override public void onFinished(BaseDownloadTask t, DownloadResult r) {
+        System.out.println("完成: " + r.getSuccessfulFiles().size() + " 文件");
+    }
+    @Override public void onError(BaseDownloadTask t, Exception e) {
+        System.err.println("出错: " + e.getMessage());
+    }
+});
+
+// 提交执行
+IDownloadManager manager = client.downloadManager();
+manager.submit(task);
+
+// 运行时控制
+manager.pause(task.getTaskId());   // 暂停
+manager.resume(task.getTaskId());  // 恢复
+manager.cancel(task.getTaskId());  // 取消
+```
+
+详细用法见 [下载任务系统](../advanced/download-task-system.md)。
+
 ---
 
 更多进阶用法见 [自定义下载路径](../advanced/custom-path.md)、[自定义线程池](../advanced/custom-executor.md)、[进度回调](../advanced/progress-callback.md)。

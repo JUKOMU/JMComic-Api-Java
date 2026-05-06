@@ -55,6 +55,7 @@ nav:
       - 自定义下载路径: advanced/custom-path.md
       - 自定义线程池: advanced/custom-executor.md
       - 进度回调: advanced/progress-callback.md
+      - 下载任务系统: advanced/download-task-system.md
       - 模块化集成: advanced/modular-integration.md
   - API 参考:
       - JmClient 接口: api/jmclient.md

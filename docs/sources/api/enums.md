@@ -90,6 +90,35 @@
 | `SUB_DOUJIN_CG` | CG |
 | `SUB_SINGLE_YOUTH` | 青年漫 |
 
+## TaskState
+
+下载任务状态（状态机）：
+
+| 值 | 说明 |
+|----|------|
+| `PENDING` | 刚创建，尚未入队 |
+| `QUEUED` | 已入队等待调度 |
+| `RUNNING` | 正在下载 |
+| `PAUSED` | 已暂停 |
+| `CANCELLING` | 正在取消中 |
+| `CANCELLED` | 已取消（终态，不可恢复） |
+| `COMPLETED` | 全部成功（终态） |
+| `COMPLETED_WITH_ERRORS` | 部分成功（终态） |
+| `FAILED` | 全部失败（终态） |
+| `SKIPPED` | 跳过（终态） |
+
+终态（`COMPLETED`、`COMPLETED_WITH_ERRORS`、`FAILED`、`CANCELLED`、`SKIPPED`）不可再切换。可通过 `isTerminal()` 判断，`isActive()` 判断是否占用资源（`QUEUED` / `RUNNING`）。
+
+## TaskType
+
+下载任务类型：
+
+| 值 | 说明 |
+|----|------|
+| `ALBUM` | 本子级下载任务 |
+| `PHOTO` | 章节级下载任务 |
+| `IMAGE` | 图片级下载任务 |
+
 ## CommentStatus
 
 评论状态。
