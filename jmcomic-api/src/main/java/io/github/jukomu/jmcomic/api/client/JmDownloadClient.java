@@ -1,5 +1,9 @@
 package io.github.jukomu.jmcomic.api.client;
 
+import io.github.jukomu.jmcomic.api.download.DownloadRequest;
+import io.github.jukomu.jmcomic.api.download.DownloadResult;
+import io.github.jukomu.jmcomic.api.download.IDownloadManager;
+import io.github.jukomu.jmcomic.api.download.task.BaseDownloadTask;
 import io.github.jukomu.jmcomic.api.model.JmAlbum;
 import io.github.jukomu.jmcomic.api.model.JmImage;
 import io.github.jukomu.jmcomic.api.model.JmPhoto;
@@ -202,6 +206,22 @@ public interface JmDownloadClient extends AutoCloseable {
                             "Use a client that overrides this method.");
         });
     }
+
+    /**
+     * 下载任务创建
+     **/
+    BaseDownloadTask createDownloadTask(JmAlbum album, Path path);
+
+    BaseDownloadTask createDownloadTask(JmPhoto photo, Path path);
+
+    BaseDownloadTask createDownloadTask(JmImage image, Path path);
+
+    /**
+     * 获取下载任务管理器，用于高级下载控制
+     *
+     * @return 下载任务管理器实例
+     */
+    IDownloadManager downloadManager();
 
     @Override
     void close();

@@ -172,8 +172,8 @@
 ### 下载漫画
 
 ```java
-import io.github.jukomu.jmcomic.api.client.DownloadProgress;
-import io.github.jukomu.jmcomic.api.client.DownloadResult;
+import io.github.jukomu.jmcomic.api.download.DownloadProgress;
+import io.github.jukomu.jmcomic.api.download.DownloadResult;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
 import io.github.jukomu.jmcomic.api.model.JmAlbum;
 import io.github.jukomu.jmcomic.api.model.JmPhoto;

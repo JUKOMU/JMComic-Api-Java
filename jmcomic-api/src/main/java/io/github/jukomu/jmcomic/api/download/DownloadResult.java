@@ -1,4 +1,4 @@
-package io.github.jukomu.jmcomic.api.client;
+package io.github.jukomu.jmcomic.api.download;
 
 import io.github.jukomu.jmcomic.api.model.JmImage;
 
@@ -44,5 +44,13 @@ public final class DownloadResult {
      */
     public boolean isAllSuccess() {
         return failedTasks.isEmpty();
+    }
+
+    @Override
+    public String toString() {
+        return "DownloadResult{" +
+                "successfulFiles=" + successfulFiles +
+                ", failedTasks=" + failedTasks +
+                '}';
     }
 }

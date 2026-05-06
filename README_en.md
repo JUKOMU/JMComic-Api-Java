@@ -171,8 +171,8 @@ The core of this project is a **data acquisition and management tool**, not a ri
 ### Download Comics
 
 ```java
-import io.github.jukomu.jmcomic.api.client.DownloadProgress;
-import io.github.jukomu.jmcomic.api.client.DownloadResult;
+import io.github.jukomu.jmcomic.api.download.DownloadProgress;
+import io.github.jukomu.jmcomic.api.download.DownloadResult;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
 import io.github.jukomu.jmcomic.api.model.JmAlbum;
 import io.github.jukomu.jmcomic.api.model.JmPhoto;

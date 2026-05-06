@@ -94,6 +94,11 @@ public final class RetryAndDomainRedirectInterceptor implements Interceptor {
                 return response;
 
             } catch (IOException e) {
+                if (isCancellation(e, chain)) {
+                    logger.info("Request to {} was canceled", requestUrl);
+                    throw e;
+                }
+
                 domainManager.reportFailure(currentHost);
                 lastException = e;
                 logger.warn("Request to {} failed with IOException: {}", requestUrl, e.getMessage());
@@ -135,5 +140,18 @@ public final class RetryAndDomainRedirectInterceptor implements Interceptor {
                 .header("Origin", origin)
                 .header("Referer", origin)
                 .build();
+    }
+
+    private boolean isCancellation(IOException e, Chain chain) {
+        if (chain.call().isCanceled()) {
+            return true;
+        }
+        String message = e.getMessage();
+        if (message == null) {
+            return false;
+        }
+        String normalized = message.toLowerCase();
+        return normalized.equals("canceled")
+                || normalized.contains("stream was reset: cancel");
     }
 }

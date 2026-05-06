@@ -1,6 +1,13 @@
 package io.github.jukomu.jmcomic.core.client;
 
-import io.github.jukomu.jmcomic.api.client.*;
+import io.github.jukomu.jmcomic.api.client.JmClient;
+import io.github.jukomu.jmcomic.api.client.JmDownloadClient;
+import io.github.jukomu.jmcomic.api.download.DownloadProgress;
+import io.github.jukomu.jmcomic.api.download.DownloadRequest;
+import io.github.jukomu.jmcomic.api.download.DownloadResult;
+import io.github.jukomu.jmcomic.api.download.enums.TaskState;
+import io.github.jukomu.jmcomic.api.download.enums.TaskType;
+import io.github.jukomu.jmcomic.api.download.task.BaseDownloadTask;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
 import io.github.jukomu.jmcomic.api.exception.NetworkException;
 import io.github.jukomu.jmcomic.api.exception.ResponseException;
@@ -13,6 +20,10 @@ import io.github.jukomu.jmcomic.core.cache.CachePool;
 import io.github.jukomu.jmcomic.core.config.JmConfiguration;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
 import io.github.jukomu.jmcomic.core.crypto.JmImageTool;
+import io.github.jukomu.jmcomic.core.download.DownloadManager;
+import io.github.jukomu.jmcomic.core.download.task.AlbumDownloadTask;
+import io.github.jukomu.jmcomic.core.download.task.ImageDownloadTask;
+import io.github.jukomu.jmcomic.core.download.task.PhotoDownloadTask;
 import io.github.jukomu.jmcomic.core.net.model.JmResponse;
 import io.github.jukomu.jmcomic.core.net.provider.DomainProbe;
 import io.github.jukomu.jmcomic.core.net.provider.JmDomainManager;
@@ -55,6 +66,7 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
     private final CookieManager cookieManager;
     protected final JmDomainManager domainManager;
     protected final CachePool<CacheKey, Object> cachePool;
+    private final DownloadManager downloadManager;
 
 
     protected AbstractJmClient(JmConfiguration config, OkHttpClient httpClient, CookieManager cookieManager, JmDomainManager domainManager) {
@@ -80,6 +92,8 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
         }
         // 根据配置决定 CachePool
         this.cachePool = config.getCachePool();
+        // 初始化 DownloadManager
+        this.downloadManager = new DownloadManager(Executors.newFixedThreadPool((config.getDownloadThreadPoolSize() > 0) ? config.getDownloadThreadPoolSize() : Runtime.getRuntime().availableProcessors()), config.getCloseTimeoutMs());
         /*
          * 后台异步初始化：更新域名列表 -> 域名探活排掉死域名 -> 启动定期复探 -> 调子类初始化
          */
@@ -310,6 +324,7 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
         List<CompletableFuture<Path>> futures = new ArrayList<>();
         ConcurrentHashMap<JmImage, Exception> failedTasks = new ConcurrentHashMap<>();
         AtomicInteger completedImages = new AtomicInteger(0);
+        AtomicInteger failedImages = new AtomicInteger(0);
         int totalImages = photo.images().size();
 
         Objects.requireNonNull(path, "Photo path generator returned null for photo " + photo.id());
@@ -327,12 +342,13 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
                         int completed = completedImages.incrementAndGet();
                         callback.accept(new DownloadProgress(
                                 photo.getAlbumId(), albumTitle, photo.id(), photo.getTitle(),
-                                completed, totalImages, 0, 0, false
+                                completed, failedImages.get(), totalImages, 0, 0, 0, false, 0, String.valueOf(System.currentTimeMillis())
                         ));
                     }
                     return destination;
                 } catch (Exception e) {
                     failedTasks.put(image, e);
+                    failedImages.incrementAndGet();
                     throw new CompletionException(e);
                 }
             }, executor);
@@ -364,10 +380,14 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
         List<CompletableFuture<Path>> futures = new ArrayList<>();
         ConcurrentHashMap<JmImage, Exception> failedTasks = new ConcurrentHashMap<>();
 
+        // 尝试从缓存获取 albumTitle（downloadPhoto 调用前 album 大概率已被缓存）
+        JmAlbum cachedJmAlbum = getCachedJmAlbum(photo.getAlbumId());
+
+        // 一次性提交所有图片任务，由线程池自身控制并发
         for (JmImage image : photo.images()) {
             CompletableFuture<Path> future = CompletableFuture.supplyAsync(() -> {
                 try {
-                    Path destination = pathGenerator.generatePath(null, photo, image);
+                    Path destination = pathGenerator.generatePath(cachedJmAlbum, photo, image);
                     downloadImage(image, destination);
                     return destination;
                 } catch (Exception e) {
@@ -384,14 +404,16 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
             logger.warn("下载章节 '{}' 时部分图片下载失败。", photo.getTitle());
         }
 
-        List<Path> successfulFiles = futures.stream()
-                .filter(f -> !f.isCompletedExceptionally())
-                .map(CompletableFuture::join)
-                .collect(Collectors.toList());
+        // 从所有 Future 中筛选出成功完成的任务路径
+        List<Path> successfulFiles = Collections.synchronizedList(new ArrayList<>());
+        for (CompletableFuture<Path> future : futures) {
+            if (!future.isCompletedExceptionally()) {
+                successfulFiles.add(future.join());
+            }
+        }
 
         DownloadResult downloadResult = new DownloadResult(successfulFiles, failedTasks);
-        logger.info("章节 {} 下载完成. 成功: {}, 失败: {}",
-                photo.getTitle(), downloadResult.getSuccessfulFiles().size(), downloadResult.getFailedTasks().size());
+        logger.info("章节 {} 下载完成. 成功: {}, 失败: {}", photo.getTitle(), downloadResult.getSuccessfulFiles().size(), downloadResult.getFailedTasks().size());
         return downloadResult;
     }
 
@@ -459,7 +481,9 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
         List<CompletableFuture<Path>> imageFutures = new ArrayList<>();
         AtomicInteger totalImages = new AtomicInteger(0);
         AtomicInteger completedImages = new AtomicInteger(0);
+        AtomicInteger failedImages = new AtomicInteger(0);
         AtomicInteger completedPhotosCount = new AtomicInteger(0);
+        AtomicInteger failedPhotosCount = new AtomicInteger(0);
 
         for (int i = 0; i < totalPhotos; i++) {
             // completionService.take() 阻塞等待任意一个章节获取完成
@@ -510,12 +534,16 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
                             int currentCompletedPhotos = completedPhotosCount.get();
                             callback.accept(new DownloadProgress(
                                     album.id(), album.getTitle(), fullPhoto.id(), fullPhoto.getTitle(),
-                                    completed, currentTotal, currentCompletedPhotos, totalPhotos, true
+                                    completed, failedImages.get(), currentTotal, currentCompletedPhotos, failedPhotosCount.get(), totalPhotos, true, 0, String.valueOf(System.currentTimeMillis())
                             ));
                         }
                         return destination;
                     } catch (Exception e) {
                         allFailedTasks.put(image, e);
+                        failedImages.incrementAndGet();
+                        if (photoCompleted.get() == 0){
+                            failedPhotosCount.incrementAndGet();
+                        }
                         throw new CompletionException(e);
                     }
                 }, executor);
@@ -544,42 +572,67 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
     @Override
     public DownloadResult downloadAlbum(JmAlbum album, IDownloadPathGenerator pathGenerator, ExecutorService executor) {
         logger.info("开始下载本子: {}", album.getTitle());
+        int totalPhotos = album.photoMetas().size();
 
-        // 并发拉取所有章节
+        // 并发拉取所有章节详情
         List<JmPhotoMeta> photoMetas = album.photoMetas();
-        List<CompletableFuture<JmPhoto>> photoFutures = new ArrayList<>(photoMetas.size());
+        ExecutorCompletionService<JmPhoto> completionService = new ExecutorCompletionService<>(executor);
+        ConcurrentHashMap<Future<JmPhoto>, String> futureToPhotoId = new ConcurrentHashMap<>();
         for (JmPhotoMeta photoMeta : photoMetas) {
-            CompletableFuture<JmPhoto> future = CompletableFuture.supplyAsync(
-                    () -> getPhoto(photoMeta.id()), executor);
-            photoFutures.add(future);
+            String id = photoMeta.id();
+            Future<JmPhoto> future = completionService.submit(() -> getPhoto(id));
+            futureToPhotoId.put(future, id);
         }
 
-        // 走完整路径生成器，逐张图片下载
+        // 构建 photoMeta 查找表，用于失败日志
+        Map<String, JmPhotoMeta> photoMetaMap = new HashMap<>();
+        for (JmPhotoMeta meta : photoMetas) {
+            photoMetaMap.put(meta.id(), meta);
+        }
+
+        // 谁先完成先处理谁 —— 边拉章节边提交图片任务
         ConcurrentHashMap<JmImage, Exception> allFailedTasks = new ConcurrentHashMap<>();
         List<CompletableFuture<Path>> imageFutures = new ArrayList<>();
 
-        for (int i = 0; i < photoFutures.size(); i++) {
-            JmPhotoMeta photoMeta = photoMetas.get(i);
-            CompletableFuture<JmPhoto> future = photoFutures.get(i);
+        for (int i = 0; i < totalPhotos; i++) {
+            // completionService.take() 阻塞等待任意一个章节获取完成
+            Future<JmPhoto> future;
             try {
-                JmPhoto fullPhoto = future.join();
-                for (JmImage image : fullPhoto.images()) {
-                    CompletableFuture<Path> imgFuture = CompletableFuture.supplyAsync(() -> {
-                        try {
-                            Path destination = pathGenerator.generatePath(album, fullPhoto, image);
-                            downloadImage(image, destination);
-                            return destination;
-                        } catch (Exception e) {
-                            allFailedTasks.put(image, e);
-                            throw new CompletionException(e);
-                        }
-                    }, executor);
-                    imageFutures.add(imgFuture);
-                }
-            } catch (CompletionException e) {
+                future = completionService.take();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+
+            String photoId = futureToPhotoId.get(future);
+            JmPhoto fullPhoto;
+            try {
+                fullPhoto = future.get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (ExecutionException e) {
+                JmPhotoMeta failedMeta = photoMetaMap.get(photoId);
                 logger.error("下载章节 '{}' (ID: {}) 失败: {}",
-                        photoMeta.getTitle(), photoMeta.id(),
+                        failedMeta != null ? failedMeta.getTitle() : "?",
+                        photoId,
                         e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
+                continue;
+            }
+
+            // 该章节获取成功，立即提交其图片任务
+            for (JmImage image : fullPhoto.images()) {
+                CompletableFuture<Path> imgFuture = CompletableFuture.supplyAsync(() -> {
+                    try {
+                        Path destination = pathGenerator.generatePath(album, fullPhoto, image);
+                        downloadImage(image, destination);
+                        return destination;
+                    } catch (Exception e) {
+                        allFailedTasks.put(image, e);
+                        throw new CompletionException(e);
+                    }
+                }, executor);
+                imageFutures.add(imgFuture);
             }
         }
 
@@ -629,6 +682,110 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
                     : this.internalExecutor;
             return downloadPhotoInternal(photo, photoPath, exec, req.getProgressCallback());
         });
+    }
+
+    @Override
+    public BaseDownloadTask createDownloadTask(JmAlbum album, Path path) {
+        AlbumDownloadTask albumDownloadTask = new AlbumDownloadTask(album, downloadManager);
+        path = path.resolve(album.getId());
+        int totalPhotos = album.photoMetas().size();
+        // 辅助线程池
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            // 并发拉取所有章节详情
+            List<JmPhotoMeta> photoMetas = album.photoMetas();
+            ExecutorCompletionService<JmPhoto> completionService = new ExecutorCompletionService<>(executor);
+            ConcurrentHashMap<Future<JmPhoto>, String> futureToPhotoId = new ConcurrentHashMap<>();
+            for (JmPhotoMeta photoMeta : photoMetas) {
+                String id = photoMeta.id();
+                Future<JmPhoto> future = completionService.submit(() -> getPhoto(id));
+                futureToPhotoId.put(future, id);
+            }
+
+            List<BaseDownloadTask> childTasks = new ArrayList<>();
+            for (int i = 0; i < totalPhotos; i++) {
+                // completionService.take() 阻塞等待任意一个章节获取完成
+                Future<JmPhoto> future;
+                try {
+                    future = completionService.take();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+
+                JmPhoto fullPhoto;
+                try {
+                    fullPhoto = future.get();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                } catch (ExecutionException e) {
+                    String photoId = futureToPhotoId.get(future);
+                    for (JmPhotoMeta photoMeta : photoMetas) {
+                        if (photoId.equals(photoMeta.getId())) {
+                            JmPhoto jmPhoto = new JmPhoto(photoId, photoMeta.getTitle(), album.getId(), null, photoMeta.getSortOrder(), null, null, null, photoMetas.size() == 1);
+                            PhotoDownloadTask photoDownloadTask = new PhotoDownloadTask(jmPhoto, downloadManager);
+                            photoDownloadTask.setType(TaskType.PHOTO);
+                            photoDownloadTask.transitState(TaskState.PENDING, TaskState.FAILED);
+                            photoDownloadTask.recordEndTimestamp();
+                            photoDownloadTask.setParentTask(albumDownloadTask);
+                            photoDownloadTask.addObserver(albumDownloadTask);
+                            childTasks.add(photoDownloadTask);
+                            photoDownloadTask.notifyStateChanged(TaskState.FAILED);
+                            break;
+                        }
+                    }
+                    continue;
+                }
+
+                BaseDownloadTask task = createDownloadTask(fullPhoto, path);
+                task.setParentTask(albumDownloadTask);
+                task.addObserver(albumDownloadTask);
+                childTasks.add(task);
+            }
+            albumDownloadTask.setChildTasks(childTasks);
+            albumDownloadTask.setType(TaskType.ALBUM);
+            return albumDownloadTask;
+        } finally {
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(config.getCloseTimeoutMs(), TimeUnit.MILLISECONDS)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+
+    }
+
+    @Override
+    public BaseDownloadTask createDownloadTask(JmPhoto photo, Path path) {
+        PhotoDownloadTask photoDownloadTask = new PhotoDownloadTask(photo, downloadManager);
+        path = photo.isSingleAlbum() ? path : path.resolve(photo.getId());
+        List<BaseDownloadTask> childTasks = new ArrayList<>();
+        for (JmImage image : photo.getImages()) {
+            BaseDownloadTask task = createDownloadTask(image, path);
+            task.setParentTask(photoDownloadTask);
+            task.addObserver(photoDownloadTask);
+            childTasks.add(task);
+        }
+        photoDownloadTask.setChildTasks(childTasks);
+        photoDownloadTask.setType(TaskType.PHOTO);
+        return photoDownloadTask;
+    }
+
+    @Override
+    public BaseDownloadTask createDownloadTask(JmImage image, Path path) {
+        ImageDownloadTask task = new ImageDownloadTask(image, httpClient, path.resolve(image.getFilename()), path.resolve(image.getFilename() + ".tmp"), config.getImageTimeout(), downloadManager);
+        task.setType(TaskType.IMAGE);
+        return task;
+    }
+
+    @Override
+    public DownloadManager downloadManager() {
+        return this.downloadManager;
     }
 
     // == 辅助方法==
@@ -802,6 +959,8 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
 
     @Override
     public void close() {
+        // 关闭 DownloadManager
+        downloadManager.close();
         // 关闭后台域名复探定时任务
         domainManager.shutdown();
 

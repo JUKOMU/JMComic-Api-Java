@@ -1,6 +1,6 @@
 package io.github.jukomu.jmcomic.api.client;
 
-import io.github.jukomu.jmcomic.api.enums.*;
+import io.github.jukomu.jmcomic.api.enums.FavoriteFolderType;
 import io.github.jukomu.jmcomic.api.model.*;
 
 import java.util.Map;

@@ -3,7 +3,7 @@ package io.github.jukomu.jmcomic.api.model;
 /**
  * @author JUKOMU
  * @Description: 用户个人资料模型
- *               包含昵称、生日、地区、职业、社交信息等可编辑字段
+ * 包含昵称、生日、地区、职业、社交信息等可编辑字段
  * @Project: jmcomic-api-java
  * @Date: 2026/04/29
  */

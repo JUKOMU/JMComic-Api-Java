@@ -1,4 +1,4 @@
-package io.github.jukomu.jmcomic.api.client;
+package io.github.jukomu.jmcomic.api.download;
 
 import io.github.jukomu.jmcomic.api.model.JmAlbum;
 import io.github.jukomu.jmcomic.api.model.JmPhoto;
@@ -11,7 +11,6 @@ import java.util.function.Function;
 
 /**
  * 下载请求的 Builder，提供链式调用方式配置下载参数。
- * 通过 {@link JmClient#download(JmAlbum)} 或 {@link JmClient#download(JmPhoto)} 创建。
  *
  * <pre>{@code
  * DownloadResult result = client.download(album)
@@ -21,14 +20,13 @@ import java.util.function.Function;
  * }</pre>
  * <p>
  * 内部使用 {@link Function} 实现延迟执行，由客户端实现类（如 AbstractJmClient）
- * 在创建时注入实际执行逻辑，为未来支持取消、暂停等操作预留架构扩展点。
+ * 在创建时注入实际执行逻辑。
  */
 public class DownloadRequest {
 
     private final Object entity;
     private final boolean isAlbum;
     private final Function<DownloadRequest, DownloadResult> executor;
-
     private Path path;
     private ExecutorService executorService;
     private Consumer<DownloadProgress> progressCallback;

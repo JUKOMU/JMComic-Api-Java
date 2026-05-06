@@ -3,15 +3,10 @@ package io.github.jukomu.jmcomic.api.client;
 import io.github.jukomu.jmcomic.api.enums.FavoriteFolderType;
 import io.github.jukomu.jmcomic.api.enums.VoteType;
 import io.github.jukomu.jmcomic.api.model.*;
-import io.github.jukomu.jmcomic.api.strategy.IAlbumPathGenerator;
-import io.github.jukomu.jmcomic.api.strategy.IDownloadPathGenerator;
-import io.github.jukomu.jmcomic.api.strategy.IPhotoPathGenerator;
+import io.github.jukomu.jmcomic.api.exception.*;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 
 /**
  * @author JUKOMU
