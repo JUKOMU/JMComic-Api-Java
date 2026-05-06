@@ -1,5 +1,17 @@
 # 版本说明
 
+## v1.1.0
+
+### 新增下载任务系统
+
+- 全新的任务管理框架，支持暂停/恢复/取消、状态机、观察者模式、任务管理器
+    - `BaseDownloadTask` — 下载任务基类，支持父子任务树、状态迁移、进度聚合
+    - `IDownloadManager` — 任务管理器接口（submit / pause / resume / cancel / 查询）
+    - `TaskObserver` — 观察者接口（onStateChanged / onProgressUpdate / onFinished / onError）
+    - `TaskState` — 10 个任务状态（PENDING / QUEUED / RUNNING / PAUSED / CANCELLING / CANCELLED / COMPLETED / COMPLETED_WITH_ERRORS / FAILED / SKIPPED）
+    - `TaskType` — 任务类型（ALBUM / PHOTO / IMAGE）
+    - `JmDownloadClient` 新增 `createDownloadTask` 和 `downloadManager` 方法
+
 ## v1.0.0
 
 首个正式版本。
