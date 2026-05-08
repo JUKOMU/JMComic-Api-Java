@@ -4,7 +4,7 @@
 
 [![Java](https://img.shields.io/badge/Java-17+-blue.svg)](https://openjdk.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-1.0.0-brightgreen.svg)](https://github.com/JUKOMU/JMComic-Api-Java)
+[![Version](https://img.shields.io/badge/Version-1.1.0-brightgreen.svg)](https://github.com/JUKOMU/JMComic-Api-Java)
 
 ---
 
