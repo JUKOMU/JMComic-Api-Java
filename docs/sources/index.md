@@ -43,7 +43,7 @@ jmcomic-android-support → Android 平台适配
 <dependency>
     <groupId>io.github.jukomu</groupId>
     <artifactId>jmcomic-core</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
