@@ -60,7 +60,7 @@ BaseDownloadTask task = client.createDownloadTask(album, path);
 client.downloadManager().submit(task);
 ```
 
-详细用法见 [下载任务系统](../../advanced/download-task-system.md)。
+详细用法见 [下载任务系统](../../advanced/download-task-system)。
 
 ## 生命周期
 
