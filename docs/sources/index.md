@@ -4,7 +4,7 @@
 
 [![Java](https://img.shields.io/badge/Java-17+-blue.svg)](https://openjdk.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-1.1.0-brightgreen.svg)](https://github.com/JUKOMU/JMComic-Api-Java)
+[![Version](https://img.shields.io/badge/Version-1.1.1-brightgreen.svg)](https://github.com/JUKOMU/JMComic-Api-Java)
 
 ---
 
@@ -43,7 +43,7 @@ jmcomic-android-support → Android 平台适配
 <dependency>
     <groupId>io.github.jukomu</groupId>
     <artifactId>jmcomic-core</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
