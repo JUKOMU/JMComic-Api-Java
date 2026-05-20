@@ -152,6 +152,15 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
     }
 
     /**
+     * 重新探测所有域名的可达性。
+     * 适用场景：网络环境切换后主动刷新域名状态。
+     */
+    public void reprobeDomains() {
+        DomainProbe probe = createDomainProbe();
+        this.domainManager.probeAllDomains(probe);
+    }
+
+    /**
      * 根据本子id生成封面url
      *
      * @param albumId 本子id
@@ -541,7 +550,7 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
                     } catch (Exception e) {
                         allFailedTasks.put(image, e);
                         failedImages.incrementAndGet();
-                        if (photoCompleted.get() == 0){
+                        if (photoCompleted.get() == 0) {
                             failedPhotosCount.incrementAndGet();
                         }
                         throw new CompletionException(e);
