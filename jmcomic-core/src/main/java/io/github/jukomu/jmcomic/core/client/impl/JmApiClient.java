@@ -15,6 +15,7 @@ import io.github.jukomu.jmcomic.core.crypto.JmCryptoTool;
 import io.github.jukomu.jmcomic.core.net.model.JmApiResponse;
 import io.github.jukomu.jmcomic.core.net.model.JmHtmlResponse;
 import io.github.jukomu.jmcomic.core.net.model.JmResponse;
+import io.github.jukomu.jmcomic.core.net.provider.DomainProbe;
 import io.github.jukomu.jmcomic.core.net.provider.JmDomainManager;
 import io.github.jukomu.jmcomic.core.parser.ApiParser;
 import io.github.jukomu.jmcomic.core.util.JsonUtils;
@@ -23,6 +24,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.CookieManager;
 import java.time.Instant;
 import java.util.List;
@@ -1475,5 +1477,33 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
         return builder
                 .header(JmConstants.APP_HEADER_TOKEN, token1)
                 .header(JmConstants.APP_HEADER_TOKEN_PARAM, token2);
+    }
+
+    @Override
+    protected DomainProbe createDomainProbe() {
+        long timeoutMs = config.getDomainProbeTimeoutMs();
+        return domain -> {
+            try {
+                HttpUrl url = new HttpUrl.Builder()
+                        .scheme("https")
+                        .host(domain)
+                        .addPathSegment(JmConstants.API_SETTING)
+                        .build();
+                Request request = new Request.Builder()
+                        .url(url)
+                        .head()
+                        .build();
+                OkHttpClient probeClient = httpClient.newBuilder()
+                        .connectTimeout(java.time.Duration.ofMillis(timeoutMs))
+                        .readTimeout(java.time.Duration.ofMillis(timeoutMs))
+                        .build();
+                try (Response response = probeClient.newCall(request).execute()) {
+                    // 响应码 < 500 视为可达（4xx 说明服务器在线，仅权限/路径问题）
+                    return response.code() < 500;
+                }
+            } catch (IOException e) {
+                return false;
+            }
+        };
     }
 }

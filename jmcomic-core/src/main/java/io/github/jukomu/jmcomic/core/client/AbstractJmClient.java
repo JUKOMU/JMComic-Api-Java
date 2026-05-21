@@ -939,6 +939,7 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
     /**
      * 创建域名探活实现，默认用 HEAD 请求检测根路径可达性。
      * 子类可以覆盖自定义。
+     * 当前默认实现无法正确探活，403 返回会被拦截。
      */
     protected DomainProbe createDomainProbe() {
         long timeoutMs = config.getDomainProbeTimeoutMs();
