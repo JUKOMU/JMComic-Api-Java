@@ -39,6 +39,8 @@ public final class JmDomainManager {
      */
     private volatile ScheduledExecutorService probeScheduler;
 
+    private volatile boolean allDeadFallback;
+
     public JmDomainManager(List<String> domains) {
         this.domains = new CopyOnWriteArrayList<>(domains);
         domains.forEach(domain -> failureCounts.putIfAbsent(domain, new AtomicInteger(0)));
@@ -141,6 +143,7 @@ public final class JmDomainManager {
      * @param probe 探活实现（由调用方注入，如 HTTP HEAD 请求）
      */
     public void probeAllDomains(DomainProbe probe) {
+        this.allDeadFallback = false;
         if (domains.isEmpty()) {
             logger.warn("域名列表为空，跳过探活");
             return;
@@ -185,6 +188,7 @@ public final class JmDomainManager {
         boolean allDead = domains.stream()
                 .allMatch(d -> failureCounts.get(d).get() >= DEAD_MARK);
         if (allDead) {
+            this.allDeadFallback = true;
             logger.warn("所有域名探活失败，回退到未探活状态（重置所有计数为 0）");
             domains.forEach(d -> failureCounts.get(d).set(0));
         }
@@ -252,6 +256,10 @@ public final class JmDomainManager {
             probeScheduler.shutdown();
             logger.info("后台域名复探已关闭");
         }
+    }
+
+    public boolean isAllDeadFallback() {
+        return allDeadFallback;
     }
 
     // == 内部方法 ==
