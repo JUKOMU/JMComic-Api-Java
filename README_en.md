@@ -8,7 +8,7 @@
 
 ![Java](https://img.shields.io/badge/Java-17+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Version](https://img.shields.io/badge/Version-1.1.1-brightgreen.svg)
+![Version](https://img.shields.io/badge/Version-1.1.2-brightgreen.svg)
 
 **A Java API library for fetching data from JMComic**
 
@@ -145,7 +145,7 @@ The core of this project is a **data acquisition and management tool**, not a ri
     <dependency>
         <groupId>io.github.jukomu</groupId>
         <artifactId>jmcomic-api</artifactId>
-        <version>1.1.1</version>
+        <version>1.1.2</version>
     </dependency>
    ```
 * Install jmcomic-core
@@ -153,7 +153,7 @@ The core of this project is a **data acquisition and management tool**, not a ri
     <dependency>
         <groupId>io.github.jukomu</groupId>
         <artifactId>jmcomic-core</artifactId>
-        <version>1.1.1</version>
+        <version>1.1.2</version>
     </dependency>
    ```
 * (Android platform) Install jmcomic-android-support
@@ -161,7 +161,7 @@ The core of this project is a **data acquisition and management tool**, not a ri
     <dependency>
         <groupId>io.github.jukomu</groupId>
         <artifactId>jmcomic-android-support</artifactId>
-        <version>1.1.1</version>
+        <version>1.1.2</version>
     </dependency>
    ```
 
