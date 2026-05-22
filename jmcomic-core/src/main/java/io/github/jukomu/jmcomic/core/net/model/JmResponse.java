@@ -49,7 +49,7 @@ public class JmResponse extends CommonResponse {
     @Override
     public void requireSuccess() throws ResponseException {
         if (isNotSuccess()) {
-            throw new ResponseException("Request failed with code: " + getHttpCode() + ", error message: " + getErrorMessage());
+            throw new ResponseException("Request failed with code: " + getHttpCode() + ", error message: " + getErrorMessage(), getHttpCode());
         }
     }
 

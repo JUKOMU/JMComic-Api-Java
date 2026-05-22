@@ -297,7 +297,6 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
         JmFavoritePage jmFavoritePage = ApiParser.parseFavoritePage(jmApiResponse.getDecodedData(), query);
         cacheJmFavoritePage(jmFavoritePage);
         return jmFavoritePage;
-
     }
 
     @Override
@@ -381,6 +380,8 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
                 host = url1.getHost();
                 this.loginHost = host;
             } catch (MalformedURLException ignored) {}
+
+            this.encryptedPassword = encryptPasswordInMemory(password);
 
             // 提取 's' 字段并创建 AVS Cookie
             String avsCookieValue = jsonObject.has("s") && !jsonObject.get("s").isJsonNull() ? jsonObject.get("s").getAsString() : null;
@@ -1459,10 +1460,25 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
         String timestamp = String.valueOf(Instant.now().getEpochSecond());
         String[] token = JmCryptoTool.generateToken(timestamp, secret, "");
         Request request = addAppHeader(getGetRequestBuilder(url), token[0], token[1]).build();
-        JmResponse response = executeRequest(request);
-        JmApiResponse jmApiResponse = new JmApiResponse(response, timestamp);
-        jmApiResponse.requireSuccess();
-        return jmApiResponse;
+        try {
+            JmResponse response = executeRequest(request);
+            JmApiResponse jmApiResponse = new JmApiResponse(response, timestamp);
+            jmApiResponse.requireSuccess();
+            return jmApiResponse;
+        } catch (ResponseException e) {
+            // 登录状态失效
+            if (e.getMessage().contains("請先登入會員") && StringUtils.isNotBlank(this.loggedInUserName)) {
+                // 重置登录域名
+                this.loginHost = JmConstants.PLACEHOLDER_HOST;
+                login(this.loggedInUserName, decryptPasswordFromMemory());
+                // 重试
+                JmResponse response = executeRequest(request);
+                JmApiResponse jmApiResponse = new JmApiResponse(response, timestamp);
+                jmApiResponse.requireSuccess();
+                return jmApiResponse;
+            }
+        }
+        return null;
     }
 
     /**
@@ -1475,10 +1491,25 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
         String timestamp = String.valueOf(Instant.now().getEpochSecond());
         String[] token = JmCryptoTool.generateToken(timestamp, JmConstants.APP_TOKEN_SECRET, JmConstants.APP_VERSION);
         Request request = addAppHeader(getPostRequestBuilder(url, requestBody), token[0], token[1]).build();
-        JmResponse response = executeRequest(request);
-        JmApiResponse jmApiResponse = new JmApiResponse(response, timestamp);
-        jmApiResponse.requireSuccess();
-        return jmApiResponse;
+        try {
+            JmResponse response = executeRequest(request);
+            JmApiResponse jmApiResponse = new JmApiResponse(response, timestamp);
+            jmApiResponse.requireSuccess();
+            return jmApiResponse;
+        } catch (ResponseException e) {
+            // 登录状态失效
+            if (e.getMessage().contains("請先登入會員") && StringUtils.isNotBlank(this.loggedInUserName)) {
+                // 重置登录域名
+                this.loginHost = JmConstants.PLACEHOLDER_HOST;
+                login(this.loggedInUserName, decryptPasswordFromMemory());
+                // 重试
+                JmResponse response = executeRequest(request);
+                JmApiResponse jmApiResponse = new JmApiResponse(response, timestamp);
+                jmApiResponse.requireSuccess();
+                return jmApiResponse;
+            }
+        }
+        return null;
     }
 
     /**

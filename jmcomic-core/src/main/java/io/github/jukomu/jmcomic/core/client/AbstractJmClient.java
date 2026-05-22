@@ -35,6 +35,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.net.CookieManager;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -62,12 +65,15 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
     protected final OkHttpClient httpClient;
     private final ExecutorService internalExecutor;
     private final boolean isExternalExecutor;
-    private volatile String loggedInUserName;
+    protected volatile String loggedInUserName;
     private final CookieManager cookieManager;
     protected final JmDomainManager domainManager;
     protected final CachePool<CacheKey, Object> cachePool;
     private final DownloadManager downloadManager;
     protected String loginHost = JmConstants.PLACEHOLDER_HOST;
+    protected SecretKey memorySafeKey;
+    // 存储加密后的密码
+    protected byte[] encryptedPassword;
 
     protected AbstractJmClient(JmConfiguration config, OkHttpClient httpClient, CookieManager cookieManager, JmDomainManager domainManager) {
         this.config = Objects.requireNonNull(config);
@@ -105,6 +111,14 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
             this.domainManager.setInitialized(true);
             this.initialize();
         });
+        // 生成一个 128位的 AES 随机密钥
+        try {
+            KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+            keyGen.init(128);
+            this.memorySafeKey = keyGen.generateKey();
+        } catch (Exception e) {
+            logger.error("Failed to init memory safe key", e);
+        }
     }
 
     /**
@@ -915,6 +929,36 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
 
     protected Request.Builder getPostRequestBuilder(HttpUrl url, RequestBody requestBody) {
         return new Request.Builder().url(url).post(requestBody);
+    }
+
+    /**
+     * 加密密码
+     */
+    protected byte[] encryptPasswordInMemory(String plainPassword) {
+        try {
+            Cipher cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.ENCRYPT_MODE, memorySafeKey);
+            return cipher.doFinal(plainPassword.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            logger.error("Failed to encrypt password in memory", e);
+            return null;
+        }
+    }
+
+    /**
+     * 解密密码
+     */
+    protected String decryptPasswordFromMemory() {
+        if (encryptedPassword == null) return null;
+        try {
+            Cipher cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.DECRYPT_MODE, memorySafeKey);
+            byte[] decryptedBytes = cipher.doFinal(encryptedPassword);
+            return new String(decryptedBytes, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            logger.error("Failed to decrypt password", e);
+            return null;
+        }
     }
 
     // == 缓存辅助方法 ==
