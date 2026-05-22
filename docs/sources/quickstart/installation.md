@@ -15,7 +15,7 @@
 <dependency>
     <groupId>io.github.jukomu</groupId>
     <artifactId>jmcomic-core</artifactId>
-    <version>1.1.2</version>
+    <version>1.1.3</version>
 </dependency>
 ```
 
@@ -27,7 +27,7 @@
 <dependency>
     <groupId>io.github.jukomu</groupId>
     <artifactId>jmcomic-api</artifactId>
-    <version>1.1.2</version>
+    <version>1.1.3</version>
 </dependency>
 ```
 
@@ -39,7 +39,7 @@
 <dependency>
     <groupId>io.github.jukomu</groupId>
     <artifactId>jmcomic-android-support</artifactId>
-    <version>1.1.2</version>
+    <version>1.1.3</version>
 </dependency>
 ```
 
