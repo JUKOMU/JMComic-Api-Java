@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.CookieManager;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -272,9 +274,15 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
 
     @Override
     public JmFavoritePage getFavorites(FavoriteQuery query) {
-        JmFavoritePage cachedJmFavoritePage = getCachedJmFavoritePage(query);
-        if (cachedJmFavoritePage != null) {
-            return cachedJmFavoritePage;
+        return getFavorites(query, false);
+    }
+
+    public JmFavoritePage getFavorites(FavoriteQuery query, boolean useCache) {
+        if (useCache) {
+            JmFavoritePage cachedJmFavoritePage = getCachedJmFavoritePage(query);
+            if (cachedJmFavoritePage != null) {
+                return cachedJmFavoritePage;
+            }
         }
         int folderId = query.getFolderId();
         int page = query.getPage();
@@ -367,13 +375,20 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
                     albumFavoritesMax
             );
 
+            String host = JmConstants.PLACEHOLDER_HOST;
+            try {
+                URL url1 = new URL(jmApiResponse.getRedirectUrl());
+                host = url1.getHost();
+                this.loginHost = host;
+            } catch (MalformedURLException ignored) {}
+
             // 提取 's' 字段并创建 AVS Cookie
             String avsCookieValue = jsonObject.has("s") && !jsonObject.get("s").isJsonNull() ? jsonObject.get("s").getAsString() : null;
             if (StringUtils.isNotBlank(avsCookieValue)) {
                 Cookie avsCookie = new Cookie.Builder()
                         .name("AVS")
                         .value(avsCookieValue)
-                        .domain(newHttpUrlBuilder().build().host())
+                        .domain(host)
                         .path("/")
                         .build();
                 httpClient.cookieJar().saveFromResponse(newHttpUrlBuilder().build(), List.of(avsCookie));

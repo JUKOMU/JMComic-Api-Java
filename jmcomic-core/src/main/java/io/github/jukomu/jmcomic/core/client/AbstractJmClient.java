@@ -67,7 +67,7 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
     protected final JmDomainManager domainManager;
     protected final CachePool<CacheKey, Object> cachePool;
     private final DownloadManager downloadManager;
-
+    protected String loginHost = JmConstants.PLACEHOLDER_HOST;
 
     protected AbstractJmClient(JmConfiguration config, OkHttpClient httpClient, CookieManager cookieManager, JmDomainManager domainManager) {
         this.config = Objects.requireNonNull(config);
@@ -906,7 +906,7 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
         // 我们只需要提供一个占位符域名，它将被拦截器替换
         return new HttpUrl.Builder()
                 .scheme("https")
-                .host(JmConstants.PLACEHOLDER_HOST);
+                .host(loginHost);
     }
 
     protected Request.Builder getGetRequestBuilder(HttpUrl url) {
