@@ -117,6 +117,74 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
      */
     protected abstract void updateDomains();
 
+    /**
+     * 获取域名状态
+     * key -> 域名
+     * value -> 失败计数，0 表示正常，-1 表示不可达
+     */
+    public Map<String, Integer> getDomainStates() {
+        Map<String, Integer> domainStates = Map.copyOf(this.domainManager.getDomainStates());
+        boolean allDeadFallback = this.domainManager.isAllDeadFallback();
+        if (allDeadFallback) {
+            for (Map.Entry<String, Integer> entry : domainStates.entrySet()) {
+                entry.setValue(-1);
+            }
+        }
+        return domainStates;
+    }
+
+    /**
+     * 重新探测所有域名的可达性。
+     * 适用场景：网络环境切换后主动刷新域名状态。
+     */
+    public void reprobeDomains() {
+        DomainProbe probe = createDomainProbe();
+        this.domainManager.probeAllDomains(probe);
+    }
+
+    /**
+     * 获取域名请求延迟
+     * key -> 域名
+     * value -> 延迟(ms)，-1 表示请求超时
+     */
+    public Map<String, Integer> getDomainLatency() {
+        long timeoutMs = config.getDomainProbeTimeoutMs();
+        Map<String, Integer> result = new ConcurrentHashMap<>();
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        CopyOnWriteArrayList<String> domains = this.domainManager.getDomains();
+        for (String domain : domains) {
+            HttpUrl url = new HttpUrl.Builder()
+                    .scheme("https")
+                    .host(domain)
+                    .build();
+            Request request = new Request.Builder()
+                    .url(url)
+                    .head()
+                    .build();
+            OkHttpClient client = new OkHttpClient.Builder()
+                    .connectTimeout(java.time.Duration.ofMillis(timeoutMs))
+                    .readTimeout(java.time.Duration.ofMillis(timeoutMs))
+                    .build();
+            futures.add(CompletableFuture.runAsync(() -> {
+                long start = System.currentTimeMillis();
+                boolean timedOut = false;
+                int latencyMs = 0;
+                try {
+                    try (Response ignored = client.newCall(request).execute()) {
+                        latencyMs = (int) (System.currentTimeMillis() - start);
+                    }
+                } catch (Exception ex) {
+                    timedOut = true;
+                }
+                result.put(domain, timedOut ? -1 : latencyMs);
+            }));
+        }
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        return result;
+    }
+
     @Override
     public byte[] fetchImageBytes(JmImage image) {
         Request request = new Request.Builder()
@@ -149,15 +217,6 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
         } catch (IOException e) {
             throw new NetworkException("Failed to fetch image due to I/O error", e);
         }
-    }
-
-    /**
-     * 重新探测所有域名的可达性。
-     * 适用场景：网络环境切换后主动刷新域名状态。
-     */
-    public void reprobeDomains() {
-        DomainProbe probe = createDomainProbe();
-        this.domainManager.probeAllDomains(probe);
     }
 
     /**
