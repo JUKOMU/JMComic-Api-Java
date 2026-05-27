@@ -18,7 +18,7 @@ jmcomic-sample       jmcomic-android-support
 <dependency>
     <groupId>io.github.jukomu</groupId>
     <artifactId>jmcomic-api</artifactId>
-    <version>1.1.4</version>
+    <version>1.1.5</version>
 </dependency>
 ```
 
@@ -35,7 +35,7 @@ jmcomic-sample       jmcomic-android-support
 <dependency>
     <groupId>io.github.jukomu</groupId>
     <artifactId>jmcomic-core</artifactId>
-    <version>1.1.4</version>
+    <version>1.1.5</version>
 </dependency>
 ```
 
@@ -49,7 +49,7 @@ jmcomic-sample       jmcomic-android-support
 <dependency>
     <groupId>io.github.jukomu</groupId>
     <artifactId>jmcomic-core</artifactId>
-    <version>1.1.4</version>
+    <version>1.1.5</version>
     <exclusions>
         <exclusion>
             <groupId>org.jsoup</groupId>
