@@ -832,6 +832,39 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
         } catch (JsonSyntaxException | JsonIOException e) {
             throw new ParseResponseException("Failed to parse 'toggle favorite' response", e);
         }
+
+        // 更新缓存
+        JmAlbum jmAlbum = getCachedJmAlbum(albumId);
+        if (jmAlbum != null) {
+            JmAlbum album = new JmAlbum(
+                    jmAlbum.getId(),
+                    jmAlbum.getTitle(),
+                    jmAlbum.getDescription(),
+                    jmAlbum.getScrambleId(),
+                    jmAlbum.getAddTime(),
+                    jmAlbum.getPageCount(),
+                    jmAlbum.getLikes(),
+                    jmAlbum.getViews(),
+                    jmAlbum.getCommentCount(),
+                    jmAlbum.getImage(),
+                    jmAlbum.getCategory(),
+                    jmAlbum.getSubCategory(),
+                    jmAlbum.getAuthors(),
+                    jmAlbum.getWorks(),
+                    jmAlbum.getActors(),
+                    jmAlbum.getTags(),
+                    jmAlbum.getRelatedAlbums(),
+                    jmAlbum.getPhotoMetas(),
+                    jmAlbum.getSeriesId(),
+                    !jmAlbum.isFavorite(),
+                    jmAlbum.isLiked(),
+                    jmAlbum.isAids(),
+                    jmAlbum.getImages(),
+                    jmAlbum.getPrice(),
+                    jmAlbum.getPurchased()
+            );
+            cacheJmAlbum(album);
+        }
     }
 
     // == 小说子系统实现 ==
@@ -1447,6 +1480,41 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
             }
         } catch (JsonSyntaxException | JsonIOException e) {
             throw new ParseResponseException("Failed to parse toggle like response", e);
+        }
+
+        if (likeType == null) {
+            // 更新缓存
+            JmAlbum jmAlbum = getCachedJmAlbum(id);
+            if (jmAlbum != null) {
+                JmAlbum album = new JmAlbum(
+                        jmAlbum.getId(),
+                        jmAlbum.getTitle(),
+                        jmAlbum.getDescription(),
+                        jmAlbum.getScrambleId(),
+                        jmAlbum.getAddTime(),
+                        jmAlbum.getPageCount(),
+                        jmAlbum.getLikes(),
+                        jmAlbum.getViews(),
+                        jmAlbum.getCommentCount(),
+                        jmAlbum.getImage(),
+                        jmAlbum.getCategory(),
+                        jmAlbum.getSubCategory(),
+                        jmAlbum.getAuthors(),
+                        jmAlbum.getWorks(),
+                        jmAlbum.getActors(),
+                        jmAlbum.getTags(),
+                        jmAlbum.getRelatedAlbums(),
+                        jmAlbum.getPhotoMetas(),
+                        jmAlbum.getSeriesId(),
+                        jmAlbum.isFavorite(),
+                        !jmAlbum.isLiked(),
+                        jmAlbum.isAids(),
+                        jmAlbum.getImages(),
+                        jmAlbum.getPrice(),
+                        jmAlbum.getPurchased()
+                );
+                cacheJmAlbum(album);
+            }
         }
     }
 
