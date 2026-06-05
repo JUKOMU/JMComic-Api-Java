@@ -1545,8 +1545,8 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
                 jmApiResponse.requireSuccess();
                 return jmApiResponse;
             }
+            throw e;
         }
-        return null;
     }
 
     /**
@@ -1576,8 +1576,8 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
                 jmApiResponse.requireSuccess();
                 return jmApiResponse;
             }
+            throw e;
         }
-        return null;
     }
 
     /**
