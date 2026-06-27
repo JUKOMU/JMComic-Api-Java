@@ -12,6 +12,8 @@
 
 **A Java API library for fetching data from JMComic**
 
+> Due to my limited experience and ability, this project may still have many areas for improvement, including implementation details, architecture design, and feature planning. Issues, suggestions, and optimization ideas are always welcome to help make the project better.
+
 ---
 
 ## Reference Project
