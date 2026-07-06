@@ -565,7 +565,7 @@ public final class HtmlParser {
     private static List<JmComment> parseTimelineComments(Document doc, String albumId, String domain) {
         Elements timelines = doc.select(".timeline-panel > .panel-body > .timeline[data-cid]");
         if (timelines.isEmpty()) {
-            timelines = doc.select("body > .timeline[data-cid], body > div > .timeline[data-cid], .timeline[data-cid]");
+            timelines = doc.select("body > .timeline[data-cid], body > div > .timeline[data-cid], .timeline[data-cid]:not(.other-timelines .timeline)");
         }
         List<JmComment> comments = new ArrayList<>();
         Set<String> seen = new HashSet<>();
@@ -606,7 +606,7 @@ public final class HtmlParser {
 
         Element contentElement = timeline.selectFirst(".timeline-content");
         String content = contentElement != null ? contentElement.text().trim() : "";
-        String contentHtml = contentElement.outerHtml().trim();
+        String contentHtml = contentElement != null ? contentElement.outerHtml().trim() : "";
 
         List<JmComment> replies = new ArrayList<>();
         for (Element reply : timeline.select(".other-timelines > .timeline[data-cid]")) {
