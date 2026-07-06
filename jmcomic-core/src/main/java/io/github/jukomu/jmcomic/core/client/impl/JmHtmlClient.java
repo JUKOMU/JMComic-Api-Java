@@ -540,7 +540,16 @@ public final class JmHtmlClient extends AbstractJmClient implements JmNovelClien
 
     @Override
     public void toggleNovelLike(String novelId) {
-        throw new UnsupportedOperationException("Toggling novel like via HTML client is not currently supported. Use JmApiClient instead.");
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment("ajax")
+                .addPathSegment("vote_novel")
+                .build();
+        RequestBody body = new FormBody.Builder()
+                .add("novel_id", novelId)
+                .add("vote", "likes")
+                .build();
+
+        executePostRequest(url, body);
     }
 
     @Override
