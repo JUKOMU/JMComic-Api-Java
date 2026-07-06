@@ -260,7 +260,7 @@ public interface JmClient {
     // == 点赞 ==
 
     /**
-     * 切换本子点赞状态（点赞/取消点赞）
+     * 切换本子点赞状态（点赞/取消点赞）, 实际无法取消点赞
      *
      * @param albumId 本子ID
      */
