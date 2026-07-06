@@ -50,7 +50,7 @@ public interface JmNovelClient {
     JmNovelPage searchNovels(String searchQuery);
 
     /**
-     * 切换小说点赞状态（点赞/取消点赞）
+     * 切换小说点赞状态（点赞/取消点赞）, 实际无法取消点赞
      *
      * @param novelId 小说ID
      */
