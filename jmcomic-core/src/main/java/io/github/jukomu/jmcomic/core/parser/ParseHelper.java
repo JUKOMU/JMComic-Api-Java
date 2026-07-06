@@ -54,8 +54,8 @@ public final class ParseHelper {
                 .stream()
                 .map(Element::text)
                 .map(String::trim)
-                .collect(Collectors.toSet())
-                .stream().toList();
+                .distinct()
+                .toList();
     }
 
     /**
