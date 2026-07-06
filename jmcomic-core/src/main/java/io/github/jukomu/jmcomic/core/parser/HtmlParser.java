@@ -582,7 +582,9 @@ public final class HtmlParser {
     private static JmComment parseTimelineComment(Element timeline, String albumId, String parentCommentId, String domain) {
         String commentId = timeline.attr("data-cid").trim()
                 .replace("{", "").replace("}", "");
-        Element avatar = timeline.selectFirst(".timeline-avatar");
+        Element left = timeline.selectFirst("> .timeline-left");
+        Element right = timeline.selectFirst("> .timeline-right");
+        Element avatar = left != null ? left.selectFirst(".timeline-avatar") : null;
         String username = "";
         if (avatar != null) {
             Element userLink = avatar.parent();
@@ -593,7 +595,7 @@ public final class HtmlParser {
                 }
             }
         }
-        String nickname = ParseHelper.selectFirstText(timeline, ".timeline-username", "comment username");
+        String nickname = right != null ? ParseHelper.selectFirstText(right, ".timeline-username", "comment username") : "";
         String photo = "";
         if (avatar != null) {
             String src = avatar.attr("src");
@@ -601,10 +603,10 @@ public final class HtmlParser {
                 photo = domain + src;
             }
         }
-        String expinfo = ParseHelper.selectFirstText(timeline, ".timeline-user-level", "comment user level");
-        String postDate = ParseHelper.selectFirstText(timeline, ".timeline-date", "comment date");
+        String expinfo = left != null ? ParseHelper.selectFirstText(left, ".timeline-user-level", "comment user level") : "";
+        String postDate = right != null ? ParseHelper.selectFirstText(right, ".timeline-date", "comment date") : "";
 
-        Element contentElement = timeline.selectFirst(".timeline-content");
+        Element contentElement = right != null ? right.selectFirst(".timeline-content") : null;
         String content = contentElement != null ? contentElement.text().trim() : "";
         String contentHtml = contentElement != null ? contentElement.outerHtml().trim() : "";
 
@@ -614,7 +616,7 @@ public final class HtmlParser {
         }
 
         String photoId = "";
-        Element photoLink = timeline.selectFirst(".timeline-ft a[href*=/photo/]");
+        Element photoLink = right != null ? right.selectFirst(".timeline-ft a[href*=/photo/]") : null;
         if (photoLink != null) {
             Matcher matcher = PATTERN_PHOTO_ID.matcher(photoLink.attr("href"));
             if (matcher.find()) {
@@ -622,7 +624,7 @@ public final class HtmlParser {
             }
         }
 
-        boolean spoiler = timeline.selectFirst(".disclose") != null;
+        boolean spoiler = right != null && right.selectFirst(".disclose") != null;
 
         return new JmComment(
                 commentId,
