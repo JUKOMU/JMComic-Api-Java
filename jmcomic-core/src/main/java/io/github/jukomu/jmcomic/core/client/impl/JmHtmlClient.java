@@ -4,10 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.jukomu.jmcomic.api.client.JmCreatorClient;
 import io.github.jukomu.jmcomic.api.client.JmNovelClient;
-import io.github.jukomu.jmcomic.api.enums.Category;
-import io.github.jukomu.jmcomic.api.enums.FavoriteFolderType;
-import io.github.jukomu.jmcomic.api.enums.SubCategory;
-import io.github.jukomu.jmcomic.api.enums.VoteType;
+import io.github.jukomu.jmcomic.api.enums.*;
 import io.github.jukomu.jmcomic.api.exception.*;
 import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
@@ -429,7 +426,14 @@ public final class JmHtmlClient extends AbstractJmClient implements JmNovelClien
 
     @Override
     public JmSearchPage getLatest(int page) {
-        throw new UnsupportedOperationException("Getting latest albums via HTML client is not currently supported. Use JmApiClient instead.");
+        HttpUrl.Builder urlBuilder = newHttpUrlBuilder()
+                .addPathSegment("albums");
+
+        urlBuilder.addQueryParameter("page", String.valueOf(page))
+                .addQueryParameter("o", OrderBy.LATEST.getValue());
+
+        JmHtmlResponse jmHtmlResponse = executeGetRequest(urlBuilder.build());
+        return HtmlParser.parseSearchPage(jmHtmlResponse.getHtml(), page);
     }
 
     @Override

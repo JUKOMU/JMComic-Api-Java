@@ -35,7 +35,7 @@ public final class HtmlParser {
     private static final Pattern PATTERN_HTML_JM_PUB_DOMAIN = Pattern.compile("[\\w-]+\\.\\w+/?\\w+");
     private static final Pattern PATTERN_JM_DOMAIN = Pattern.compile("^(?:https?://)?(?:[^@\\n]+@)?(?:www\\.)?([^:/\\n?]+)");
     public static final Pattern PATTERN_HTML_ALBUM_VIEWS = Pattern.compile("<span>(.*?)</span>\\n *<span>(次觀看|观看次数|次观看次数|次觀看次數|觀看次數|views)</span>");
-    public static final Pattern PATTERN_HTML_SEARCH_TOTAL = Pattern.compile("class=\"text-white\">(\\d+)</span> A漫.");
+    public static final Pattern PATTERN_HTML_SEARCH_TOTAL = Pattern.compile("<span class=\"text-white\">(\\d+)\\+?</span>(?=[^<]*?(?:搜索|結果|顯示|结果|显示))");
     private static final Pattern PATTERN_PHOTO_ID = Pattern.compile("/photo/(\\d+)/?");
 
     /**
@@ -404,6 +404,9 @@ public final class HtmlParser {
 
         // 选择所有本子卡片
         Elements albumCards = doc.select("div.thumb-overlay");
+        if (albumCards.isEmpty()) {
+            albumCards = doc.select("div.thumb-overlay-albums");
+        }
 
         List<JmAlbumMeta> content = albumCards.stream()
                 .map(HtmlParser::parseAlbumCard)
@@ -414,12 +417,12 @@ public final class HtmlParser {
 
     private static JmAlbumMeta parseAlbumCard(Element card) {
         Element parent = card.parent();
-        Element link = parent.selectFirst("div.thumb-overlay").selectFirst("a");
+        Element link = parent.selectFirst("div.thumb-overlay, div.thumb-overlay-albums").selectFirst("a");
         Element img = link.selectFirst("img");
         String id = extractIdFromUrl(link.attr("href"));
         String title = img.attr("title");
-        Element authorElement = parent.selectFirst("div[class=title-truncate]");
-        List<String> authors = (authorElement != null) ? List.of(authorElement.text()) : List.of();
+        Element authorElement = parent.selectFirst("div.title-truncate:not(.tags):not(.video-title)");
+        List<String> authors = ParseHelper.selectAllText(authorElement, "div.title-truncate a");
         List<String> tags = ParseHelper.selectAllText(parent, "div.tags a");
 
         return new JmAlbumMeta(id, title, authors, tags);
