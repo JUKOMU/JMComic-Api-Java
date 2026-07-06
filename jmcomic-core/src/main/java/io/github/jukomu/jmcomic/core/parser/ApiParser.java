@@ -884,7 +884,7 @@ public final class ApiParser {
         String gender = getJsonFieldAsString(node, "gender");
         String updateAt = getJsonFieldAsString(node, "update_at");
         String parentCommentId = getJsonFieldAsString(node, "parent_CID");
-        String spoiler = getJsonFieldAsString(node, "spoiler");
+        boolean spoiler = !getJsonFieldAsString(node, "spoiler").equals("1");
 
         // 构建完整的用户头像URL: https://{imageDomain}/media/users/{photo}
         String avatarUrl = StringUtils.isNotBlank(photo)

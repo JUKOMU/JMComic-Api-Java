@@ -88,7 +88,7 @@ public record JmComment(
         /*
           剧透标记。
          */
-        String spoiler,
+        boolean spoiler,
         /*
           该评论下的回复列表。
          */
@@ -137,7 +137,7 @@ public record JmComment(
                 "",
                 "",
                 "",
-                "",
+                false,
                 replys,
                 voteUp,
                 voteDown
@@ -320,7 +320,7 @@ public record JmComment(
      *
      * @return 剧透标记
      */
-    public String getSpoiler() {
+    public boolean isSpoiler() {
         return spoiler;
     }
 
