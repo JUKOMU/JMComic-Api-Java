@@ -373,9 +373,33 @@ public final class JmHtmlClient extends AbstractJmClient implements JmNovelClien
         }
     }
 
+    /**
+     * 获取论坛评论列表, HTML 只支持获取本子评论
+     *
+     * @param query 论坛查询参数（见 {@link ForumQuery} 静态工厂方法）
+     * @return 评论列表的一页结果
+     */
     @Override
     public JmCommentList getComments(ForumQuery query) {
-        throw new UnsupportedOperationException("Getting comment list via HTML client is not currently supported. Use JmApiClient instead.");
+        if (!"aid".equals(query.getIdParam())) {
+            throw new UnsupportedOperationException("HTML client currently supports album comments only. Use JmApiClient for novel, blog, or user forum queries.");
+        }
+        if (query.getChapterId() != null && !query.getChapterId().isEmpty()) {
+            throw new UnsupportedOperationException("HTML client does not support chapter-scoped forum queries. Use JmApiClient instead.");
+        }
+
+        String albumId = query.getEntityId();
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment("ajax")
+                .addPathSegment("album_pagination")
+                .build();
+        RequestBody body = new FormBody.Builder()
+                .add("video_id", albumId)
+                .add("page", String.valueOf(query.getPage()))
+                .build();
+
+        JmHtmlResponse response = executePostRequest(url, body);
+        return HtmlParser.parseAlbumCommentsAjax(response.getHtml(), albumId);
     }
 
     @Override

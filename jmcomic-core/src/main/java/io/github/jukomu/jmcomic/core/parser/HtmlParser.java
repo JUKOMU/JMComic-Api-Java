@@ -36,6 +36,7 @@ public final class HtmlParser {
     private static final Pattern PATTERN_JM_DOMAIN = Pattern.compile("^(?:https?://)?(?:[^@\\n]+@)?(?:www\\.)?([^:/\\n?]+)");
     public static final Pattern PATTERN_HTML_ALBUM_VIEWS = Pattern.compile("<span>(.*?)</span>\\n *<span>(次觀看|观看次数|次观看次数|次觀看次數|觀看次數|views)</span>");
     public static final Pattern PATTERN_HTML_SEARCH_TOTAL = Pattern.compile("class=\"text-white\">(\\d+)</span> A漫.");
+    private static final Pattern PATTERN_PHOTO_ID = Pattern.compile("/photo/(\\d+)/?");
 
     /**
      * 解析本子详情页 (Album Page)。
@@ -535,6 +536,119 @@ public final class HtmlParser {
             id = "0";
         }
         return new String[]{name, id};
+    }
+
+    /**
+     * 解析 /ajax/album_pagination 返回的评论分页响应。
+     *
+     * @param responseHtml AJAX 响应体
+     * @param albumId      本子 ID
+     * @return 评论列表
+     */
+    public static JmCommentList parseAlbumCommentsAjax(String responseHtml, String albumId) {
+        Document doc = Jsoup.parse(responseHtml);
+        String domain = extractDomain(doc);
+        List<JmComment> comments = parseTimelineComments(doc, albumId, domain);
+        return new JmCommentList(comments.size(), comments);
+    }
+
+    private static String extractDomain(Document doc) {
+        Element userLink = doc.selectFirst("a[href^=https://][href*=/user/]");
+        if (userLink != null) {
+            String href = userLink.attr("href");
+            int pathStart = href.indexOf("/", "https://".length());
+            return pathStart > 0 ? href.substring(0, pathStart) : href;
+        }
+        return "";
+    }
+
+    private static List<JmComment> parseTimelineComments(Document doc, String albumId, String domain) {
+        Elements timelines = doc.select(".timeline-panel > .panel-body > .timeline[data-cid]");
+        if (timelines.isEmpty()) {
+            timelines = doc.select("body > .timeline[data-cid], body > div > .timeline[data-cid], .timeline[data-cid]");
+        }
+        List<JmComment> comments = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (Element timeline : timelines) {
+            String commentId = timeline.attr("data-cid").trim();
+            if (commentId.isEmpty() || !seen.add(commentId)) {
+                continue;
+            }
+            comments.add(parseTimelineComment(timeline, albumId, "", domain));
+        }
+        return comments;
+    }
+
+    private static JmComment parseTimelineComment(Element timeline, String albumId, String parentCommentId, String domain) {
+        String commentId = timeline.attr("data-cid").trim()
+                .replace("{", "").replace("}", "");
+        Element avatar = timeline.selectFirst(".timeline-avatar");
+        String username = "";
+        if (avatar != null) {
+            Element userLink = avatar.parent();
+            if (userLink != null && "a".equals(userLink.tagName())) {
+                String href = userLink.attr("href");
+                if (href.contains("/user/")) {
+                    username = href.substring(href.lastIndexOf("/user/") + "/user/".length());
+                }
+            }
+        }
+        String nickname = ParseHelper.selectFirstText(timeline, ".timeline-username", "comment username");
+        String photo = "";
+        if (avatar != null) {
+            String src = avatar.attr("src");
+            if (StringUtils.isNotBlank(src) && StringUtils.isNotBlank(domain)) {
+                photo = domain + src;
+            }
+        }
+        String expinfo = ParseHelper.selectFirstText(timeline, ".timeline-user-level", "comment user level");
+        String postDate = ParseHelper.selectFirstText(timeline, ".timeline-date", "comment date");
+
+        Element contentElement = timeline.selectFirst(".timeline-content");
+        String content = contentElement != null ? contentElement.text().trim() : "";
+        String contentHtml = contentElement.outerHtml().trim();
+
+        List<JmComment> replies = new ArrayList<>();
+        for (Element reply : timeline.select(".other-timelines > .timeline[data-cid]")) {
+            replies.add(parseTimelineComment(reply, albumId, commentId, domain));
+        }
+
+        String photoId = "";
+        Element photoLink = timeline.selectFirst(".timeline-ft a[href*=/photo/]");
+        if (photoLink != null) {
+            Matcher matcher = PATTERN_PHOTO_ID.matcher(photoLink.attr("href"));
+            if (matcher.find()) {
+                photoId = matcher.group(1);
+            }
+        }
+
+        boolean spoiler = timeline.selectFirst(".disclose") != null;
+
+        return new JmComment(
+                commentId,
+                "",
+                username,
+                nickname,
+                content,
+                contentHtml,
+                postDate,
+                photo,
+                expinfo,
+                JmCommentExpInfo.empty(expinfo),
+                albumId,
+                "",
+                "",
+                photoId,
+                "JM" + albumId,
+                0,
+                "",
+                "",
+                parentCommentId,
+                spoiler,
+                replies,
+                0,
+                0
+        );
     }
 
     /**
