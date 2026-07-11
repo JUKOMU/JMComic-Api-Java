@@ -445,7 +445,12 @@ public final class ApiParser {
         List<JmImage> images = new ArrayList<>();
         int sortOrder = 1;
         for (JsonElement item : imagesArray) {
-            String filename = ((JsonObject) item).get("image").getAsString();
+            String filename;
+            try {
+                filename = item.getAsString();
+            } catch (Exception e) {
+                filename = ((JsonObject) item).get("image").getAsString();
+            }
             String url = String.format("%s%s/media/photos/%s/%s", JmConstants.PROTOCOL_HTTPS, imageDomain, photoId, filename);
             images.add(new JmImage(
                     photoId,
