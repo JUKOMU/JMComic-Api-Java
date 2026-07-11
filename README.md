@@ -8,7 +8,7 @@
 
 ![Java](https://img.shields.io/badge/Java-17+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Version](https://img.shields.io/badge/Version-1.1.6-brightgreen.svg)
+![Version](https://img.shields.io/badge/Version-1.1.7-brightgreen.svg)
 
 **一个用于获取JMComic(禁漫天堂)数据的Java API库**
 
@@ -148,7 +148,7 @@
     <dependency>
         <groupId>io.github.jukomu</groupId>
         <artifactId>jmcomic-api</artifactId>
-        <version>1.1.6</version>
+        <version>1.1.7</version>
     </dependency>
    ```
 * 安装 jmcomic-core
@@ -156,7 +156,7 @@
     <dependency>
         <groupId>io.github.jukomu</groupId>
         <artifactId>jmcomic-core</artifactId>
-        <version>1.1.6</version>
+        <version>1.1.7</version>
     </dependency>
    ```
 * Android平台额外安装 jmcomic-android-support
@@ -164,7 +164,7 @@
     <dependency>
         <groupId>io.github.jukomu</groupId>
         <artifactId>jmcomic-android-support</artifactId>
-        <version>1.1.6</version>
+        <version>1.1.7</version>
     </dependency>
    ```
 
