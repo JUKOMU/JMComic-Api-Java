@@ -445,7 +445,16 @@ public final class ApiParser {
         List<JmImage> images = new ArrayList<>();
         int sortOrder = 1;
         for (JsonElement item : imagesArray) {
-            String filename = ((JsonObject) item).get("image").getAsString();
+            String filename;
+            if (item.isJsonPrimitive()) {
+                filename = item.getAsString();
+            } else if (item.isJsonObject()
+                    && item.getAsJsonObject().has("image")
+                    && !item.getAsJsonObject().get("image").isJsonNull()) {
+                filename = item.getAsJsonObject().get("image").getAsString();
+            } else {
+                throw new ParseResponseException("Unsupported image element format in images array: " + item);
+            }
             String url = String.format("%s%s/media/photos/%s/%s", JmConstants.PROTOCOL_HTTPS, imageDomain, photoId, filename);
             images.add(new JmImage(
                     photoId,
