@@ -3,9 +3,7 @@ package io.github.jukomu.jmcomic.core.client.impl;
 import com.google.gson.*;
 import io.github.jukomu.jmcomic.api.client.JmCreatorClient;
 import io.github.jukomu.jmcomic.api.client.JmNovelClient;
-import io.github.jukomu.jmcomic.api.enums.FavoriteFolderType;
-import io.github.jukomu.jmcomic.api.enums.TimeOption;
-import io.github.jukomu.jmcomic.api.enums.VoteType;
+import io.github.jukomu.jmcomic.api.enums.*;
 import io.github.jukomu.jmcomic.api.exception.*;
 import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
@@ -564,7 +562,7 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
                 .build();
 
         JmApiResponse jmApiResponse = executeGetRequest(url, JmConstants.APP_TOKEN_SECRET);
-        return ApiParser.parseLatestOrPromoteList(jmApiResponse.getDecodedData(), page);
+        return ApiParser.parseLatestList(jmApiResponse.getDecodedData(), page);
     }
 
     @Override
@@ -719,15 +717,57 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
     }
 
     @Override
-    public Map getPromote() {
+    public List<JmPromoteCategory> getPromote() {
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment(JmConstants.API_COMIC_PROMOTE)
                 .build();
 
         JmApiResponse jmApiResponse = executeGetRequest(url, JmConstants.APP_TOKEN_SECRET);
-        // API 返回的是数组，接口要 Map，包一层 {"list": [...]} 兼容一下
-        List<Map> list = JsonUtils.fromJson(jmApiResponse.getDecodedData(), List.class);
-        return Map.of("list", list);
+        return ApiParser.parsePromote(jmApiResponse.getDecodedData());
+    }
+
+    @Override
+    public JmSearchPage getPromoteList(JmPromoteCategory category, int page) {
+        switch (category.getType()) {
+            case "promote": {
+                HttpUrl url = newHttpUrlBuilder()
+                        .addPathSegment(JmConstants.API_COMIC_PROMOTE_LIST)
+                        .addQueryParameter("id", category.getId())
+                        .addQueryParameter("page", String.valueOf(page))
+                        .build();
+                JmApiResponse jmApiResponse = executeGetRequest(url, JmConstants.APP_TOKEN_SECRET);
+                return ApiParser.parsePromoteList(jmApiResponse.getDecodedData(), page);
+            }
+            case "category_id": {
+                Category cat = null;
+                for (Category c : Category.values()) {
+                    if (c.getValue().equals(category.getSlug())) {
+                        cat = c;
+                        break;
+                    }
+                }
+                if (cat == null) {
+                    throw new UnsupportedOperationException("Unknown category slug: " + category.getSlug());
+                }
+                SearchQuery searchQuery = new SearchQuery.Builder()
+                        .category(cat)
+                        .page(page)
+                        .orderBy(OrderBy.LATEST)
+                        .build();
+                return getCategories(searchQuery);
+            }
+            case "not_in_category_id": {
+                SearchQuery searchQuery = new SearchQuery.Builder()
+                        .text(category.getTitle())
+                        .mainTag(SearchMainTag.SITE_SEARCH)
+                        .page(page)
+                        .orderBy(OrderBy.LATEST)
+                        .build();
+                return search(searchQuery);
+            }
+            default:
+                throw new UnsupportedOperationException("Promote type '" + category.getType() + "' is not supported");
+        }
     }
 
     @Override
