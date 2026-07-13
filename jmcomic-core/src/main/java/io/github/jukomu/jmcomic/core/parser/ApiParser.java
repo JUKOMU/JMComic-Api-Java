@@ -8,6 +8,7 @@ import io.github.jukomu.jmcomic.api.exception.ParseResponseException;
 import io.github.jukomu.jmcomic.api.exception.ResponseException;
 import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.core.constant.JmConstants;
+import io.github.jukomu.jmcomic.core.util.JsonUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Entities;
@@ -522,14 +523,14 @@ public final class ApiParser {
     }
 
     /**
-     * 解析最新上架/推广列表 (Latest/Promote List) 的API JSON响应。
+     * 解析最新上架的API JSON响应。
      * 这些 API 返回的是裸 JSON 数组 [{...}, {...}]，而非包装对象。
      *
      * @param jsonStr     API返回的JSON字符串（裸数组）。
      * @param currentPage 当前页码。
      * @return 一个 JmSearchPage 对象。
      */
-    public static JmSearchPage parseLatestOrPromoteList(String jsonStr, int currentPage) {
+    public static JmSearchPage parseLatestList(String jsonStr, int currentPage) {
         try {
             JsonArray array = JsonParser.parseString(jsonStr).getAsJsonArray();
             List<JmAlbumMeta> list = parseAlbumMetaList(array);
@@ -589,6 +590,75 @@ public final class ApiParser {
             return parseAlbumMetaList(array);
         } catch (Exception e) {
             throw new ParseResponseException("Failed to parse random recommend API JSON", e);
+        }
+    }
+
+    /**
+     * 解析首页推荐栏分类 (Promote) 的API JSON响应。
+     * 该接口返回裸 JSON 数组 [{...}, {...}]，每个元素包含 id, title, slug, type, filter_val, content。
+     *
+     * @param jsonStr API返回的JSON字符串。
+     * @return JmPromoteCategory 列表。
+     */
+    public static List<JmPromoteCategory> parsePromote(String jsonStr) {
+        try {
+            JsonArray array = JsonParser.parseString(jsonStr).getAsJsonArray();
+            List<JmPromoteCategory> result = new ArrayList<>();
+            for (JsonElement item : array) {
+                JsonObject node = item.getAsJsonObject();
+                List<Map> content = JsonUtils.fromJson(
+                        node.getAsJsonArray("content").toString(), List.class);
+                result.add(new JmPromoteCategory(
+                        getString(node, "id"),
+                        getString(node, "title"),
+                        getString(node, "slug"),
+                        getString(node, "type"),
+                        getString(node, "filter_val"),
+                        content
+                ));
+            }
+            return result;
+        } catch (Exception e) {
+            throw new ParseResponseException("Failed to parse promote API JSON", e);
+        }
+    }
+
+    /**
+     * 解析首页推荐栏列表 (Promote List) 的API JSON响应。
+     * 该接口返回结构为 {@code {"total": "140", "list": [...]}}，total 为字符串，内容在 list 字段。
+     *
+     * @param jsonStr     API返回的JSON字符串。
+     * @param currentPage 当前页码。
+     * @return 一个 JmSearchPage 对象。
+     */
+    public static JmSearchPage parsePromoteList(String jsonStr, int currentPage) {
+        try {
+            JsonObject jsonObject = JsonParser.parseString(jsonStr).getAsJsonObject();
+
+            int totalItems = 0;
+            if (jsonObject.has("total") && !jsonObject.get("total").isJsonNull()) {
+                JsonElement totalElement = jsonObject.get("total");
+                if (totalElement.isJsonPrimitive() && totalElement.getAsJsonPrimitive().isString()) {
+                    totalItems = Integer.parseInt(totalElement.getAsString());
+                } else {
+                    totalItems = totalElement.getAsInt();
+                }
+            }
+
+            int totalPages = (totalItems == 0)
+                    ? 0
+                    : (int) Math.ceil((double) totalItems / JmConstants.PAGE_SIZE_SEARCH);
+
+            JsonArray listArray = jsonObject.has("list") && jsonObject.get("list").isJsonArray()
+                    ? jsonObject.getAsJsonArray("list")
+                    : new JsonArray();
+            List<JmAlbumMeta> content = parseAlbumMetaList(listArray);
+
+            return new JmSearchPage(currentPage, totalItems, totalPages, content);
+        } catch (ParseResponseException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ParseResponseException("Failed to parse promote list API JSON", e);
         }
     }
 

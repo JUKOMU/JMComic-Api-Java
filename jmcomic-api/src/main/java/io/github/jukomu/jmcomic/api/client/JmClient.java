@@ -308,11 +308,20 @@ public interface JmClient {
     List<JmAlbumMeta> getRandomRecommend();
 
     /**
-     * 获取首页推广/Banner内容
+     * 获取首页推荐栏分类
      *
-     * @return 推广数据（原始JSON Map）
+     * @return 首页推荐栏分类列表
      */
-    Map getPromote();
+    List<JmPromoteCategory> getPromote();
+
+    /**
+     * 获取首页推荐栏分类详情（分页）
+     *
+     * @param category 推荐栏分类
+     * @param page     页码（从1开始）
+     * @return 分页结果
+     */
+    JmSearchPage getPromoteList(JmPromoteCategory category, int page);
 
     /**
      * 获取连载/系列化列表（分页）

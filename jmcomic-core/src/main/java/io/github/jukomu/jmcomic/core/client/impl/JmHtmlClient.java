@@ -491,7 +491,12 @@ public final class JmHtmlClient extends AbstractJmClient implements JmNovelClien
     }
 
     @Override
-    public Map getPromote() {
+    public List<JmPromoteCategory> getPromote() {
+        throw new UnsupportedOperationException("Get promote via HTML client is not currently supported. Use JmApiClient instead.");
+    }
+
+    @Override
+    public JmSearchPage getPromoteList(JmPromoteCategory category, int page) {
         throw new UnsupportedOperationException("Get promote via HTML client is not currently supported. Use JmApiClient instead.");
     }
 
