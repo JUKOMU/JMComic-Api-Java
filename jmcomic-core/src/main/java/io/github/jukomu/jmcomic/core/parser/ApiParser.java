@@ -544,7 +544,7 @@ public final class ApiParser {
             }
             return new JmSearchPage(currentPage, totalItems, totalPages, list);
         } catch (Exception e) {
-            throw new ParseResponseException("Failed to parse latest/promote list API JSON", e);
+            throw new ParseResponseException("Failed to parse latest list API JSON", e);
         }
     }
 
