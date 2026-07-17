@@ -576,6 +576,28 @@ public final class HtmlParser {
         return albumList;
     }
 
+    /**
+     * 解析用户本子浏览历史页面。
+     *
+     * @param html 完整的HTML页面内容。
+     * @return 一个 JmAlbumMeta 列表。
+     */
+    public static List<JmAlbumMeta> parseWatchHistory(String html) {
+        Document doc = Jsoup.parse(html);
+        List<JmAlbumMeta> albumList = new ArrayList<>();
+        Elements albumDivs = doc.select("form#watch_form div[id^=watchlist_album_]");
+        for (Element albumDiv : albumDivs) {
+            String albumId = albumDiv.id().replace("watchlist_album_", "");
+            String title = "";
+            Element titleElement = albumDiv.selectFirst(".image-item-text");
+            if (titleElement != null) {
+                title = titleElement.text().trim();
+            }
+            albumList.add(new JmAlbumMeta(albumId, title, null, null));
+        }
+        return albumList;
+    }
+
     private static String[] parseFavoriteFolderNameAndId(Document doc) {
         Element activeLi = doc.selectFirst("div#folder_list li.active");
         String name = activeLi.text().trim();
