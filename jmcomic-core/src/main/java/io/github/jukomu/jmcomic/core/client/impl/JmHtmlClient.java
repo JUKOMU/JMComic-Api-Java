@@ -475,9 +475,24 @@ public final class JmHtmlClient extends AbstractJmClient implements JmNovelClien
         throw new UnsupportedOperationException("Edit user profile via HTML client is not currently supported. Use JmApiClient instead.");
     }
 
+    /**
+     * 获取观看历史
+     * <p>HTML 客户端 page 参数无效
+     *
+     * @param page 页码（从1开始）
+     * @return 观看历史列表
+     */
     @Override
     public List<JmAlbumMeta> getWatchHistory(int page) {
-        throw new UnsupportedOperationException("Get history via HTML client is not currently supported. Use JmApiClient instead.");
+        String userName = getLoggedInUserName();
+        HttpUrl.Builder urlBuilder = newHttpUrlBuilder()
+                .addPathSegment("user")
+                .addPathSegment(userName)
+                .addPathSegment("favorite")
+                .addPathSegment("watchlist");
+
+        JmHtmlResponse jmHtmlResponse = executeGetRequest(urlBuilder.build());
+        return HtmlParser.parseWatchHistory(jmHtmlResponse.getHtml());
     }
 
     @Override
