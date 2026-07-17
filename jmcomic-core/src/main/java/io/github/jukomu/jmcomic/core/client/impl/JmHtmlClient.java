@@ -492,12 +492,42 @@ public final class JmHtmlClient extends AbstractJmClient implements JmNovelClien
 
     @Override
     public List<JmPromoteCategory> getPromote() {
-        throw new UnsupportedOperationException("Get promote via HTML client is not currently supported. Use JmApiClient instead.");
+        HttpUrl url = newHttpUrlBuilder().build();
+        JmHtmlResponse jmHtmlResponse = executeGetRequest(url);
+        return HtmlParser.parsePromote(jmHtmlResponse.getHtml());
     }
 
+    /**
+     * 获取首页推荐栏分类详情（分页）
+     * 目前复用了搜索页的解析逻辑，实际上“每周連載更新”这个页面结构和搜索页有较大区别
+     *
+     * @param category 推荐栏分类
+     * @param page     页码（从1开始）
+     * @return
+     */
     @Override
     public JmSearchPage getPromoteList(JmPromoteCategory category, int page) {
-        throw new UnsupportedOperationException("Get promote via HTML client is not currently supported. Use JmApiClient instead.");
+        String urlStr = category.getFilterVal();
+        if (urlStr == null || urlStr.isEmpty()) {
+            throw new UnsupportedOperationException(
+                    "Cannot determine promote list URL. The category must be obtained from getPromote() via HTML client.");
+        }
+        if (urlStr.startsWith("/novels") || urlStr.startsWith("/blog_library")) {
+            throw new UnsupportedOperationException("Promote list for '" + urlStr + "' is not supported via HTML client.");
+        }
+
+        HttpUrl parsed = HttpUrl.parse("https://dummy" + urlStr);
+        HttpUrl.Builder urlBuilder = newHttpUrlBuilder();
+        for (int i = 0; i < parsed.pathSize(); i++) {
+            urlBuilder.addEncodedPathSegment(parsed.encodedPathSegments().get(i));
+        }
+        for (String name : parsed.queryParameterNames()) {
+            urlBuilder.addQueryParameter(name, parsed.queryParameter(name));
+        }
+        urlBuilder.addQueryParameter("page", String.valueOf(page));
+
+        JmHtmlResponse jmHtmlResponse = executeGetRequest(urlBuilder.build());
+        return HtmlParser.parseSearchPage(jmHtmlResponse.getHtml(), page);
     }
 
     @Override

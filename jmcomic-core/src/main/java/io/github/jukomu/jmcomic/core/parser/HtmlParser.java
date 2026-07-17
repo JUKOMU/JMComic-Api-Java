@@ -36,6 +36,7 @@ public final class HtmlParser {
     private static final Pattern PATTERN_JM_DOMAIN = Pattern.compile("^(?:https?://)?(?:[^@\\n]+@)?(?:www\\.)?([^:/\\n?]+)");
     public static final Pattern PATTERN_HTML_ALBUM_VIEWS = Pattern.compile("<span>(.*?)</span>\\n *<span>(次觀看|观看次数|次观看次数|次觀看次數|觀看次數|views)</span>");
     public static final Pattern PATTERN_HTML_SEARCH_TOTAL = Pattern.compile("<span class=\"text-white\">(\\d+)\\+?</span>(?=[^<]*?(?:搜索|結果|顯示|结果|显示))");
+    public static final Pattern PATTERN_HTML_SEARCH_TOTAL2 = Pattern.compile("class=\"text-white\">(\\d+)</span> A漫.");
     private static final Pattern PATTERN_PHOTO_ID = Pattern.compile("/photo/(\\d+)/?");
 
     /**
@@ -422,10 +423,63 @@ public final class HtmlParser {
         String id = extractIdFromUrl(link.attr("href"));
         String title = img.attr("title");
         Element authorElement = parent.selectFirst("div.title-truncate:not(.tags):not(.video-title)");
-        List<String> authors = ParseHelper.selectAllText(authorElement, "div.title-truncate a");
+        List<String> authors = authorElement != null
+                ? ParseHelper.selectAllText(authorElement, "div.title-truncate a")
+                : Collections.emptyList();
         List<String> tags = ParseHelper.selectAllText(parent, "div.tags a");
 
         return new JmAlbumMeta(id, title, authors, tags);
+    }
+
+    /**
+     * 解析首页推荐栏分类
+     *
+     * @param html 完整的HTML页面内容。
+     * @return 一个 JmPromoteCategory 列表。
+     */
+    public static List<JmPromoteCategory> parsePromote(String html) {
+        Document doc = Jsoup.parse(html);
+        List<JmPromoteCategory> result = new ArrayList<>();
+        for (Element talkTitle : doc.select("h4.talk-title")) {
+            Element titleSpan = talkTitle.selectFirst("span");
+            if (titleSpan == null) continue;
+            String title = titleSpan.text().trim();
+            if (title.isEmpty()) continue;
+            Element titleRow = talkTitle;
+            while (titleRow != null && !titleRow.hasClass("row")) {
+                titleRow = titleRow.parent();
+            }
+            if (titleRow == null) continue;
+            Element moreBtn = titleRow.selectFirst("a.talk-more-btn");
+            String filterVal = moreBtn != null ? moreBtn.attr("href") : "";
+            List<Map> content = new ArrayList<>();
+            Element contentRow = titleRow.nextElementSibling();
+            if (contentRow != null) {
+                Elements thumbOverlays = contentRow.select("div.thumb-overlay-albums");
+                for (Element thumb : thumbOverlays) {
+                    Element container = thumb.parent();
+                    Element link = thumb.selectFirst("a");
+                    if (link == null) continue;
+                    String albumId = extractIdFromUrl(link.attr("href"));
+                    Element img = link.selectFirst("img");
+                    String albumTitle = img != null ? img.attr("title") : "";
+                    String cover = "";
+                    if (img != null) {
+                        String dataSrc = img.attr("data-src");
+                        cover = dataSrc.isEmpty() ? img.attr("src") : dataSrc;
+                    }
+                    List<String> authors = ParseHelper.selectAllText(container, "div.title-truncate-index.hidden-xs a");
+                    Map<String, Object> card = new HashMap<>();
+                    card.put("id", albumId);
+                    card.put("title", albumTitle);
+                    card.put("cover", cover);
+                    card.put("authors", authors);
+                    content.add(card);
+                }
+            }
+            result.add(new JmPromoteCategory("", title, "", "", filterVal, content));
+        }
+        return result;
     }
 
     /**
@@ -438,6 +492,10 @@ public final class HtmlParser {
         Matcher matcher = PATTERN_HTML_SEARCH_TOTAL.matcher(html);
         if (matcher.find()) {
             return Integer.parseInt(matcher.group(1));
+        }
+        Matcher matcher2 = PATTERN_HTML_SEARCH_TOTAL2.matcher(html);
+        if (matcher2.find()) {
+            return Integer.parseInt(matcher2.group(1));
         }
         return 0;
     }
