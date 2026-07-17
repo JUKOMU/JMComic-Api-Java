@@ -497,7 +497,16 @@ public final class JmHtmlClient extends AbstractJmClient implements JmNovelClien
 
     @Override
     public void deleteWatchHistory(String id) {
-        throw new UnsupportedOperationException("Delete history via HTML client is not currently supported. Use JmApiClient instead.");
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment("ajax")
+                .addPathSegment("remove_album_playlist")
+                .build();
+        RequestBody body = new FormBody.Builder()
+                .add("video_id", id)
+                .add("list", "watchlist")
+                .build();
+
+        executePostRequest(url, body);
     }
 
     @Override
