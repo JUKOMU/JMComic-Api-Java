@@ -436,6 +436,18 @@ public final class JmHtmlClient extends AbstractJmClient implements JmNovelClien
         return HtmlParser.parseSearchPage(jmHtmlResponse.getHtml(), page);
     }
 
+    /**
+     * 获取本子下载信息
+     * <p>api端点 "/album_download/{albumId}"
+     * <p>流程如下:
+     * <p>GET "/album_download/{albumId}" -> 获取页面html
+     * <p>POST "/album_download/{albumId}" {album_id: xxx,verification: xxx} -> 重定向到下载地址url -> GET 下载地址url
+     * <p>验证码获取: GET /captcha/{Math.random()}
+     * <p>网页端需要手动输入验证码，无法直接获取
+     *
+     * @param albumId 本子ID
+     * @return 下载信息
+     */
     @Override
     public JmAlbumDownloadInfo getAlbumDownloadInfo(String albumId) {
         throw new UnsupportedOperationException("Getting album download info via HTML client is not currently supported. Use JmApiClient instead.");
