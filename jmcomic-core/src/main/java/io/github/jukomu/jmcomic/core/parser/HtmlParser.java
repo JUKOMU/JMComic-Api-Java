@@ -79,10 +79,9 @@ public final class HtmlParser {
                 parseRelatedAlbums(doc),
                 // 章节列表
                 parsePhotoMetas(doc, id),
-                // HTML 解析不支持以下字段
                 "0",                  // seriesId
-                false,                // isFavorite
-                false,                // liked
+                parseFavorite(doc, id), // isFavorite
+                parseLiked(doc, id),    // liked
                 false,                // isAids
                 Collections.emptyList(), // images
                 "",                   // price
@@ -105,6 +104,11 @@ public final class HtmlParser {
     }
 
     private static String parseAlbumId(Document doc) {
+        Element albumIdElement = doc.getElementById("album_id");
+        if (albumIdElement != null && StringUtils.isNotBlank(albumIdElement.attr("value"))) {
+            return albumIdElement.attr("value");
+        }
+
         // 优先从PC布局的 h2 标签提取
         Element h2Element = doc.selectFirst("div.col-lg-7 h2:contains(禁漫车：), div.col-lg-7 h2:contains(禁漫車：)");
         if (h2Element != null && h2Element.parent() != null) {
@@ -121,6 +125,30 @@ public final class HtmlParser {
             return mobileIdElement.text().replaceAll("[^0-9]", "");
         }
         throw new ParseResponseException("Could not parse album id.");
+    }
+
+    private static boolean parseFavorite(Document doc, String albumId) {
+        Element favoriteElement = doc.getElementById("favorite_album_" + albumId);
+        if (favoriteElement == null) {
+            return false;
+        }
+
+        Element favoriteIcon = favoriteElement.selectFirst("i");
+        return favoriteIcon != null && !hasInlineStyle(favoriteIcon, "color", "#000000");
+    }
+
+    private static boolean parseLiked(Document doc, String albumId) {
+        return doc.select("[id=love_likes_" + albumId + "] i")
+                .stream()
+                .anyMatch(element -> hasInlineStyle(element, "color", "red"));
+    }
+
+    private static boolean hasInlineStyle(Element element, String property, String value) {
+        return Arrays.stream(element.attr("style").split(";"))
+                .map(declaration -> declaration.split(":", 2))
+                .anyMatch(parts -> parts.length == 2
+                        && property.equalsIgnoreCase(parts[0].trim())
+                        && value.equalsIgnoreCase(parts[1].trim()));
     }
 
     private static String extractDate(Document doc, String key) {
