@@ -340,11 +340,22 @@ public final class JmHtmlClient extends AbstractJmClient implements JmNovelClien
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment("ajax")
                 .addPathSegment("favorite_album")
-                .addQueryParameter("album_id", albumId)
-                .addQueryParameter("fid", folderId == null ? "0" : folderId)
                 .build();
 
-        JmHtmlResponse jmHtmlResponse = executeGetRequest(url);
+        HttpUrl urlDel = newHttpUrlBuilder()
+                .addPathSegment("ajax")
+                .addPathSegment("delete_favorite_album")
+                .build();
+
+        FormBody.Builder formBuilder = new FormBody.Builder()
+                .add("album_id", albumId)
+                .add("fid", folderId == null ? "0" : folderId);
+
+        FormBody.Builder formBuilderDel = new FormBody.Builder()
+                .add("album_id", albumId);
+
+        JmHtmlResponse jmHtmlResponse = executePostRequest(url, formBuilder.build());
+
         try {
             /*
              * 网页端收藏接口返回 JSON，status=1 成功，=0 表示已收藏过。
@@ -354,6 +365,15 @@ public final class JmHtmlClient extends AbstractJmClient implements JmNovelClien
             int status = 0;
             if (jsonObject.has("status") && !jsonObject.get("status").isJsonNull()) {
                 status = jsonObject.get("status").getAsInt();
+            }
+
+            if (status == 0) {
+                // 删除收藏
+                JmHtmlResponse jmHtmlResponseDel = executePostRequest(urlDel, formBuilderDel.build());
+                jsonObject = JsonParser.parseString(jmHtmlResponseDel.getHtml()).getAsJsonObject();
+                if (jsonObject.has("status") && !jsonObject.get("status").isJsonNull()) {
+                    status = jsonObject.get("status").getAsInt();
+                }
             }
 
             if (status != 1) {
@@ -453,9 +473,48 @@ public final class JmHtmlClient extends AbstractJmClient implements JmNovelClien
         throw new UnsupportedOperationException("Getting album download info via HTML client is not currently supported. Use JmApiClient instead.");
     }
 
+    /**
+     * 未完成
+     * 移动作品到文件夹只对已经收藏作品的有效
+     * 删除文件夹只能删除空文件夹
+     * @param type       操作类型 (add/edit/move/del)
+     * @param folderId   文件夹ID
+     * @param folderName 文件夹名称（添加/重命名时需要）
+     * @param albumId    本子ID（移动时需要）
+     * @return
+     */
     @Override
     public JmFavoriteFolderResult manageFavoriteFolder(FavoriteFolderType type, String folderId, String folderName, String albumId) {
-        throw new UnsupportedOperationException("Managing favorite folders via HTML client is not currently supported. Use JmApiClient instead.");
+        HttpUrl.Builder urlBuilder = newHttpUrlBuilder()
+                .addPathSegment("user")
+                .addPathSegment(getLoggedInUserName())
+                .addPathSegment("favorite")
+                .addPathSegment("albums");
+
+        FormBody.Builder formBuilder = new FormBody.Builder();
+
+        if (type == FavoriteFolderType.ADD) {
+            formBuilder.add("addfolder-name", folderName);
+        }
+
+        if (type == FavoriteFolderType.DELETE) {
+            formBuilder.add("deletefolder-name", folderId);
+        }
+
+        if (type == FavoriteFolderType.EDIT) {
+            urlBuilder.addQueryParameter("folder", folderId);
+            formBuilder.add("editfolder-fid", folderId);
+            formBuilder.add("editfolder-name", folderName);
+        }
+
+        if (type == FavoriteFolderType.MOVE) {
+            formBuilder.add("movefolder-fid", folderId);
+            formBuilder.add("movefolder-aid", albumId);
+        }
+
+        JmHtmlResponse jmHtmlResponse = executePostRequest(urlBuilder.build(), formBuilder.build());
+
+        return new JmFavoriteFolderResult("ok", type.getDescription()+"成功");
     }
 
     // == HTML 客户端暂不实现（使用 JmApiClient） ==
@@ -468,7 +527,11 @@ public final class JmHtmlClient extends AbstractJmClient implements JmNovelClien
 
     @Override
     public void logout() {
-        throw new UnsupportedOperationException("Logout via HTML client is not currently supported. Use JmApiClient instead.");
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment("logout")
+                .build();
+
+        JmHtmlResponse jmHtmlResponse = executeGetRequest(url);
     }
 
     @Override
