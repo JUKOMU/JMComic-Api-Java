@@ -340,11 +340,22 @@ public final class JmHtmlClient extends AbstractJmClient implements JmNovelClien
         HttpUrl url = newHttpUrlBuilder()
                 .addPathSegment("ajax")
                 .addPathSegment("favorite_album")
-                .addQueryParameter("album_id", albumId)
-                .addQueryParameter("fid", folderId == null ? "0" : folderId)
                 .build();
 
-        JmHtmlResponse jmHtmlResponse = executeGetRequest(url);
+        HttpUrl urlDel = newHttpUrlBuilder()
+                .addPathSegment("ajax")
+                .addPathSegment("delete_favorite_album")
+                .build();
+
+        FormBody.Builder formBuilder = new FormBody.Builder()
+                .add("album_id", albumId)
+                .add("fid", folderId == null ? "0" : folderId);
+
+        FormBody.Builder formBuilderDel = new FormBody.Builder()
+                .add("album_id", albumId);
+
+        JmHtmlResponse jmHtmlResponse = executePostRequest(url, formBuilder.build());
+
         try {
             /*
              * 网页端收藏接口返回 JSON，status=1 成功，=0 表示已收藏过。
@@ -354,6 +365,15 @@ public final class JmHtmlClient extends AbstractJmClient implements JmNovelClien
             int status = 0;
             if (jsonObject.has("status") && !jsonObject.get("status").isJsonNull()) {
                 status = jsonObject.get("status").getAsInt();
+            }
+
+            if (status == 0) {
+                // 删除收藏
+                JmHtmlResponse jmHtmlResponseDel = executePostRequest(urlDel, formBuilderDel.build());
+                jsonObject = JsonParser.parseString(jmHtmlResponseDel.getHtml()).getAsJsonObject();
+                if (jsonObject.has("status") && !jsonObject.get("status").isJsonNull()) {
+                    status = jsonObject.get("status").getAsInt();
+                }
             }
 
             if (status != 1) {
