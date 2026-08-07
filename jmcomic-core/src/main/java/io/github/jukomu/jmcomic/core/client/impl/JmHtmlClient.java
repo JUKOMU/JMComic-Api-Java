@@ -527,7 +527,11 @@ public final class JmHtmlClient extends AbstractJmClient implements JmNovelClien
 
     @Override
     public void logout() {
-        throw new UnsupportedOperationException("Logout via HTML client is not currently supported. Use JmApiClient instead.");
+        HttpUrl url = newHttpUrlBuilder()
+                .addPathSegment("logout")
+                .build();
+
+        JmHtmlResponse jmHtmlResponse = executeGetRequest(url);
     }
 
     @Override
