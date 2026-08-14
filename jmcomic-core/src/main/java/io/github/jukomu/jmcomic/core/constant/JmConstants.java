@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * @author JUKOMU
@@ -126,7 +127,7 @@ public final class JmConstants {
             "www.cdnplaystation6.cc"
     ));
 
-    public static List<String> DEFAULT_IMAGE_DOMAINS = Collections.unmodifiableList(List.of(
+    public static List<String> DEFAULT_IMAGE_DOMAINS = new CopyOnWriteArrayList<>(List.of(
             "cdn-msp.jmapiproxy1.cc",
             "cdn-msp.jmapiproxy2.cc",
             "cdn-msp2.jmapiproxy2.cc",

@@ -111,8 +111,9 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
             logger.info("当前API客户端版本[{}]，更新API客户端版本[{}] -> [{}]", JmConstants.APP_VERSION, JmConstants.APP_VERSION, JmConstants.APP_VERSION);
         }
 
-        if (imgHost != null) {
+        if (imgHost != null && !JmConstants.DEFAULT_IMAGE_DOMAINS.contains(imgHost)) {
             JmConstants.DEFAULT_IMAGE_DOMAINS.add(imgHost);
+            logger.info("添加动态图片域名[{}]，当前图片域名列表: {}", imgHost, JmConstants.DEFAULT_IMAGE_DOMAINS);
         }
     }
 
