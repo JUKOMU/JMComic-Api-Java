@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.CookieManager;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.time.Instant;
 import java.util.List;
@@ -111,8 +112,38 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
             logger.info("当前API客户端版本[{}]，更新API客户端版本[{}] -> [{}]", JmConstants.APP_VERSION, JmConstants.APP_VERSION, JmConstants.APP_VERSION);
         }
 
-        if (imgHost != null) {
-            JmConstants.DEFAULT_IMAGE_DOMAINS.add(imgHost);
+        String imageHost = normalizeImageHost(imgHost);
+        if (imageHost != null) {
+            boolean added;
+            synchronized (JmConstants.DEFAULT_IMAGE_DOMAINS) {
+                added = !JmConstants.DEFAULT_IMAGE_DOMAINS.contains(imageHost) && JmConstants.DEFAULT_IMAGE_DOMAINS.add(imageHost);
+            }
+            if (added) {
+                logger.info("添加动态图片域名[{}]，当前图片域名列表: {}", imageHost, JmConstants.DEFAULT_IMAGE_DOMAINS);
+            }
+        }
+    }
+
+    /**
+     * 标准化图片域名，提取并返回主机名（Host）。
+     *
+     * @param imgHost 图片URL或主机名，可为任意格式
+     * @return 标准化后的主机名
+     */
+    private static String normalizeImageHost(String imgHost) {
+        if (StringUtils.isBlank(imgHost)) {
+            return null;
+        }
+
+        String value = imgHost.trim();
+        try {
+            URI uri = URI.create(value);
+            if (uri.getScheme() == null) {
+                uri = URI.create(JmConstants.PROTOCOL_HTTPS + value);
+            }
+            return uri.getHost();
+        } catch (IllegalArgumentException e) {
+            return null;
         }
     }
 
