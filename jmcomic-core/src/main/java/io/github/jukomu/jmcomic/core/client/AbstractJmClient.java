@@ -103,7 +103,7 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
         /*
          * 后台异步初始化：更新域名列表 -> 域名探活排掉死域名 -> 启动定期复探 -> 调子类初始化
          */
-        this.internalExecutor.submit(() -> {
+        this.internalExecutor.execute(() -> {
             try {
                 this.updateDomains();
                 DomainProbe probe = createDomainProbe();
@@ -111,8 +111,9 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
                 this.domainManager.startPeriodicProbe(probe, config.getDomainProbeIntervalMs());
                 this.domainManager.setInitialized(true);
                 this.initialize();
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 logger.error("后台初始化任务执行失败", e);
+                throw e;
             }
         });
         // 生成一个 128位的 AES 随机密钥
