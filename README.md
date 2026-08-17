@@ -20,6 +20,10 @@
 
 [![hect0x7/JMComic-Crawler-Python - GitHub](https://gh-card.dev/repos/hect0x7/JMComic-Crawler-Python.svg?fullname=)](https://github.com/hect0x7/JMComic-Crawler-Python)
 
+## 基于本项目开发
+
+[![JUKOMU/JQ-Viewer - GitHub](https://gh-card.dev/repos/JUKOMU/JQ-Viewer.svg?fullname=)](https://github.com/JUKOMU/JQ-Viewer)
+
 ---
 
 ## 功能概述
