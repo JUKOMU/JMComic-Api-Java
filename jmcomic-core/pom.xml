@@ -52,7 +52,7 @@
 
         <!-- webp支持 -->
         <dependency>
-            <groupId>org.sejda.imageio</groupId>
+            <groupId>io.github.darkxanter</groupId>
             <artifactId>webp-imageio</artifactId>
         </dependency>
 
