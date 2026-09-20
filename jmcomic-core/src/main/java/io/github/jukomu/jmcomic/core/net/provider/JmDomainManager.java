@@ -326,8 +326,12 @@ public final class JmDomainManager {
             return;
         }
         try {
-            future.join();
-        } catch (CompletionException e) {
+            future.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new JmClientInitializationException(
+                    "Wait for client initialization was interrupted.", e);
+        } catch (ExecutionException e) {
             Throwable cause = e.getCause();
             if (cause instanceof JmClientInitializationException initializationException) {
                 throw initializationException;
@@ -335,10 +339,6 @@ public final class JmDomainManager {
             throw new JmClientInitializationException("Failed while waiting for client initialization.", cause);
         } catch (CancellationException e) {
             throw new JmClientInitializationException("Client initialization was cancelled.", e);
-        }
-        if (Thread.currentThread().isInterrupted()) {
-            Thread.currentThread().interrupt();
-            throw new JmClientInitializationException("Wait for client initialization was interrupted.");
         }
     }
 }
