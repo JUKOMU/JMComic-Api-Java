@@ -1,16 +1,18 @@
 package io.github.jukomu.jmcomic.sample.config;
 
 import io.github.jukomu.jmcomic.api.enums.ClientType;
+import io.github.jukomu.jmcomic.api.exception.JmClientInitializationException;
 import io.github.jukomu.jmcomic.core.JmComic;
 import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
 import io.github.jukomu.jmcomic.core.config.JmConfiguration;
 
 import java.time.Duration;
+import java.util.concurrent.CompletionException;
 
 /**
  * 配置示例，演示 {@link JmConfiguration.Builder} 的常用选项。
  *
- * <p>运行此示例不会发起网络请求，仅演示配置构建。
+ * <p>示例最后会异步初始化一个 HTML 客户端，以验证完整配置。
  */
 public class ConfigUsage {
     public static void main(String[] args) {
@@ -44,8 +46,14 @@ public class ConfigUsage {
         System.out.println("域名探活超时: " + advanced.getDomainProbeTimeoutMs() + "ms");
 
         // 用完整配置创建客户端，验证配置是否生效
-        try (AbstractJmClient client = JmComic.newHtmlClient(advanced)) {
+        try (AbstractJmClient client = JmComic.newHtmlClientAsync(advanced).join()) {
             System.out.println("\n客户端已创建: " + client.getClientType());
+        } catch (CompletionException e) {
+            if (e.getCause() instanceof JmClientInitializationException initializationException) {
+                System.err.println("客户端初始化失败: " + initializationException.getMessage());
+                return;
+            }
+            throw e;
         }
     }
 }

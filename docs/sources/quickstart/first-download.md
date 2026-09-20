@@ -6,9 +6,12 @@
 
 ```java
 import io.github.jukomu.jmcomic.api.enums.ClientType;
+import io.github.jukomu.jmcomic.api.exception.JmClientInitializationException;
 import io.github.jukomu.jmcomic.core.JmComic;
 import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
 import io.github.jukomu.jmcomic.core.config.JmConfiguration;
+
+import java.util.concurrent.CompletionException;
 
 public class QuickStart {
     public static void main(String[] args) {
@@ -16,8 +19,14 @@ public class QuickStart {
                 .clientType(ClientType.API)
                 .build();
 
-        try (AbstractJmClient client = JmComic.newApiClient(config)) {
+        try (AbstractJmClient client = JmComic.newApiClientAsync(config).join()) {
             client.downloadAlbum(client.getAlbum("1064000"));
+        } catch (CompletionException e) {
+            if (e.getCause() instanceof JmClientInitializationException initializationException) {
+                System.err.println("客户端初始化失败: " + initializationException.getMessage());
+                return;
+            }
+            throw e;
         }
     }
 }
@@ -26,7 +35,7 @@ public class QuickStart {
 ## 带进度的下载
 
 ```java
-try (AbstractJmClient client = JmComic.newApiClient(config)) {
+try (AbstractJmClient client = JmComic.newApiClientAsync(config).join()) {
     JmAlbum album = client.getAlbum("1064000");
 
     DownloadResult result = client.download(album)
@@ -60,5 +69,6 @@ client.download(photo)
 ## 关键点
 
 - client 实现了 `AutoCloseable`，**必须用 try-with-resources 或手动 close()**
+- 异步工厂仅在客户端完整初始化后返回；失败时 Future 以 `JmClientInitializationException` 异常完成
 - 默认下载到当前工作目录，可通过配置修改（见 [自定义下载路径](../advanced/custom-path.md)）
 - 图片默认保存为 jpg 格式
