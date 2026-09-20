@@ -57,7 +57,7 @@ JmConfiguration config = new JmConfiguration.Builder()
         .clientType(ClientType.API)
         .build();
 
-try (AbstractJmClient client = JmComic.newApiClient(config)) {
+try (AbstractJmClient client = JmComic.newApiClientAsync(config).join()) {
     // 下载本子
     client.download(client.getAlbum("1064000"))
             .withProgress(p -> System.out.printf("进度: %d/%d%n",

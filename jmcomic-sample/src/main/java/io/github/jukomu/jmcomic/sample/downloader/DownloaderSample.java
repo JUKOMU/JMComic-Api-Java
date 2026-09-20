@@ -1,8 +1,9 @@
 package io.github.jukomu.jmcomic.sample.downloader;
 
-import io.github.jukomu.jmcomic.api.client.DownloadProgress;
-import io.github.jukomu.jmcomic.api.client.DownloadResult;
+import io.github.jukomu.jmcomic.api.download.DownloadProgress;
+import io.github.jukomu.jmcomic.api.download.DownloadResult;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
+import io.github.jukomu.jmcomic.api.exception.JmClientInitializationException;
 import io.github.jukomu.jmcomic.api.model.JmAlbum;
 import io.github.jukomu.jmcomic.api.model.JmPhoto;
 import io.github.jukomu.jmcomic.core.JmComic;
@@ -13,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.concurrent.Executors;
+import java.util.concurrent.CompletionException;
 
 /**
  * 下载功能示例，展示新旧两种 API 的使用方式。
@@ -35,7 +37,7 @@ public class DownloaderSample {
                 .clientType(ClientType.API)
                 .build();
 
-        try (AbstractJmClient client = JmComic.newApiClient(config)) {
+        try (AbstractJmClient client = JmComic.newApiClientAsync(config).join()) {
 
             // ==================== 旧 API - 简洁模式 ====================
             System.out.println("========== 旧 API：直接下载 ==========");
@@ -55,6 +57,12 @@ public class DownloaderSample {
 
             System.out.println("\n========== 高级用法：自定义线程池 ==========");
             downloadWithCustomExecutor(client, "1064000");
+        } catch (CompletionException e) {
+            if (e.getCause() instanceof JmClientInitializationException initializationException) {
+                System.err.println("客户端初始化失败: " + initializationException.getMessage());
+                return;
+            }
+            throw e;
         }
     }
 

@@ -5,7 +5,7 @@
 ```java
 ExecutorService myExecutor = Executors.newFixedThreadPool(16);
 
-try (AbstractJmClient client = JmComic.newApiClient(config)) {
+try (AbstractJmClient client = JmComic.newApiClientAsync(config).join()) {
     DownloadResult result = client.download(album)
             .withExecutor(myExecutor)
             .withProgress(p -> System.out.printf("%d/%d%n",

@@ -9,6 +9,7 @@ import io.github.jukomu.jmcomic.api.download.enums.TaskState;
 import io.github.jukomu.jmcomic.api.download.enums.TaskType;
 import io.github.jukomu.jmcomic.api.download.task.BaseDownloadTask;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
+import io.github.jukomu.jmcomic.api.exception.JmClientInitializationException;
 import io.github.jukomu.jmcomic.api.exception.NetworkException;
 import io.github.jukomu.jmcomic.api.exception.ResponseException;
 import io.github.jukomu.jmcomic.api.model.*;
@@ -46,6 +47,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -60,6 +62,14 @@ import java.util.stream.Collectors;
  * @Date: 2025/10/28
  */
 public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
+
+    private enum InitializationState {
+        INITIALIZING,
+        READY,
+        FAILED,
+        CLOSED
+    }
+
     private final Logger logger = LoggerFactory.getLogger(AbstractJmClient.class);
     protected final JmConfiguration config;
     protected final OkHttpClient httpClient;
@@ -74,13 +84,19 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
     protected SecretKey memorySafeKey;
     // 存储加密后的密码
     protected byte[] encryptedPassword;
+    private final Object initializationLock = new Object();
+    private final CompletableFuture<Void> initializationFuture = new CompletableFuture<>();
+    private final AtomicBoolean resourcesClosed = new AtomicBoolean(false);
+    private volatile InitializationState initializationState = InitializationState.INITIALIZING;
+    private boolean initializationStarted;
+    private volatile Future<?> initializationTask;
+    private volatile Thread initializationThread;
 
     protected AbstractJmClient(JmConfiguration config, OkHttpClient httpClient, CookieManager cookieManager, JmDomainManager domainManager) {
         this.config = Objects.requireNonNull(config);
         this.httpClient = Objects.requireNonNull(httpClient);
         this.cookieManager = Objects.requireNonNull(cookieManager);
         this.domainManager = Objects.requireNonNull(domainManager);
-        this.domainManager.setInitialized(false);
 
         /*
          * 线程池优先用用户自定义的，没有就按下载线程池大小配置创建，
@@ -100,22 +116,6 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
         this.cachePool = config.getCachePool();
         // 初始化 DownloadManager
         this.downloadManager = new DownloadManager(Executors.newFixedThreadPool((config.getDownloadThreadPoolSize() > 0) ? config.getDownloadThreadPoolSize() : Runtime.getRuntime().availableProcessors()), config.getCloseTimeoutMs());
-        /*
-         * 后台异步初始化：更新域名列表 -> 域名探活排掉死域名 -> 启动定期复探 -> 调子类初始化
-         */
-        this.internalExecutor.execute(() -> {
-            try {
-                this.updateDomains();
-                DomainProbe probe = createDomainProbe();
-                this.domainManager.probeAllDomains(probe);
-                this.domainManager.startPeriodicProbe(probe, config.getDomainProbeIntervalMs());
-                this.domainManager.setInitialized(true);
-                this.initialize();
-            } catch (RuntimeException e) {
-                logger.error("后台初始化任务执行失败", e);
-                throw e;
-            }
-        });
         // 生成一个 128位的 AES 随机密钥
         try {
             KeyGenerator keyGen = KeyGenerator.getInstance("AES");
@@ -124,6 +124,12 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
         } catch (Exception e) {
             logger.error("Failed to init memory safe key", e);
         }
+
+        this.initializationFuture.whenComplete((ignored, error) -> {
+            if (this.initializationFuture.isCancelled()) {
+                close();
+            }
+        });
     }
 
     /**
@@ -135,6 +141,94 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
      * 更新域名列表
      */
     protected abstract void updateDomains();
+
+    /**
+     * 启动客户端初始化。
+     * 并发或重复调用始终返回同一个 Future，初始化流程只执行一次。
+     *
+     * @return 客户端初始化结果
+     */
+    public final CompletableFuture<Void> initializeAsync() {
+        Throwable submissionFailure = null;
+        synchronized (initializationLock) {
+            if (initializationState != InitializationState.INITIALIZING || initializationStarted) {
+                return initializationFuture;
+            }
+            initializationStarted = true;
+            try {
+                initializationTask = internalExecutor.submit(this::runInitialization);
+            } catch (Throwable error) {
+                submissionFailure = error;
+            }
+        }
+        if (submissionFailure != null) {
+            failInitialization(submissionFailure);
+        }
+        return initializationFuture;
+    }
+
+    private void runInitialization() {
+        initializationThread = Thread.currentThread();
+        try {
+            ensureInitializationActive();
+            updateDomains();
+            ensureInitializationActive();
+
+            DomainProbe probe = createDomainProbe();
+            domainManager.probeAllDomains(probe);
+            ensureInitializationActive();
+
+            domainManager.enterInitializationContext();
+            try {
+                initialize();
+            } finally {
+                domainManager.exitInitializationContext();
+            }
+            ensureInitializationActive();
+
+            domainManager.startPeriodicProbe(probe, config.getDomainProbeIntervalMs());
+            synchronized (initializationLock) {
+                if (initializationState != InitializationState.INITIALIZING) {
+                    domainManager.shutdown();
+                    return;
+                }
+                domainManager.setInitialized(true);
+                initializationState = InitializationState.READY;
+            }
+            initializationFuture.complete(null);
+        } catch (Throwable error) {
+            failInitialization(error);
+        } finally {
+            initializationThread = null;
+        }
+    }
+
+    private void ensureInitializationActive() {
+        if (initializationState != InitializationState.INITIALIZING || Thread.currentThread().isInterrupted()) {
+            throw new CancellationException("Client initialization is no longer active.");
+        }
+    }
+
+    private void failInitialization(Throwable cause) {
+        JmClientInitializationException exception = cause instanceof JmClientInitializationException
+                ? (JmClientInitializationException) cause
+                : new JmClientInitializationException("Failed to initialize JMComic client.", cause);
+
+        synchronized (initializationLock) {
+            if (initializationState != InitializationState.INITIALIZING) {
+                return;
+            }
+            initializationState = InitializationState.FAILED;
+        }
+
+        logger.error("客户端初始化失败", exception);
+        domainManager.failInitialization(exception);
+        try {
+            cleanupOwnedResources(false);
+        } finally {
+            initializationFuture.completeExceptionally(exception);
+        }
+    }
 
     /**
      * 获取域名状态
@@ -1077,9 +1171,42 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
 
     @Override
     public void close() {
-        // 关闭 DownloadManager
-        downloadManager.close();
-        // 关闭后台域名复探定时任务
+        Future<?> task;
+        synchronized (initializationLock) {
+            if (initializationState == InitializationState.CLOSED) {
+                return;
+            }
+            initializationState = InitializationState.CLOSED;
+            task = initializationTask;
+        }
+
+        domainManager.closeInitialization();
+        if (task != null) {
+            task.cancel(true);
+        }
+
+        boolean waitForExecutor = Thread.currentThread() != initializationThread;
+        try {
+            cleanupOwnedResources(waitForExecutor);
+        } finally {
+            initializationFuture.completeExceptionally(
+                    new JmClientInitializationException("Client was closed before initialization completed."));
+        }
+    }
+
+    private void cleanupOwnedResources(boolean waitForExecutor) {
+        if (!resourcesClosed.compareAndSet(false, true)) {
+            return;
+        }
+
+        httpClient.dispatcher().cancelAll();
+
+        try {
+            downloadManager.close();
+        } catch (RuntimeException e) {
+            logger.warn("关闭 DownloadManager 时发生错误", e);
+        }
+
         domainManager.shutdown();
 
         /*
@@ -1087,16 +1214,20 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
          * 超时强制关闭
          */
         if (!isExternalExecutor && internalExecutor != null && !internalExecutor.isShutdown()) {
-            internalExecutor.shutdown();
-            try {
-                long closeTimeoutMs = config.getCloseTimeoutMs();
-                if (!internalExecutor.awaitTermination(closeTimeoutMs, TimeUnit.MILLISECONDS)) {
-                    logger.warn("线程池未在 {}ms 内完成所有任务，强制关闭", closeTimeoutMs);
-                    internalExecutor.shutdownNow();
-                }
-            } catch (InterruptedException e) {
+            if (!waitForExecutor) {
                 internalExecutor.shutdownNow();
-                Thread.currentThread().interrupt();
+            } else {
+                internalExecutor.shutdown();
+                try {
+                    long closeTimeoutMs = config.getCloseTimeoutMs();
+                    if (!internalExecutor.awaitTermination(closeTimeoutMs, TimeUnit.MILLISECONDS)) {
+                        logger.warn("线程池未在 {}ms 内完成所有任务，强制关闭", closeTimeoutMs);
+                        internalExecutor.shutdownNow();
+                    }
+                } catch (InterruptedException e) {
+                    internalExecutor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
             }
         }
 

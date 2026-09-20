@@ -7,6 +7,7 @@
 ```
 RuntimeException
   └── JmComicException          基类
+        ├── JmClientInitializationException  客户端初始化失败
         ├── NetworkException     网络请求失败
         ├── ResponseException    服务器返回错误
         ├── ParseResponseException  解析响应失败
@@ -20,6 +21,7 @@ RuntimeException
 | 异常 | 触发场景 |
 |------|----------|
 | `JmComicException` | 通用 JM 相关异常基类 |
+| `JmClientInitializationException` | 客户端初始化失败或初始化期间关闭；原始异常可通过 `getCause()` 获取 |
 | `NetworkException` | 网络连接失败、超时等 |
 | `ResponseException` | 服务端返回非预期状态码 |
 | `ParseResponseException` | JSON/HTML 解析失败 |

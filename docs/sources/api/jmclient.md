@@ -1,6 +1,6 @@
 # JmClient 接口
 
-`JmClient` 是核心客户端接口，定义了所有业务操作。通过 `JmComic.newApiClient()` 或 `JmComic.newHtmlClient()` 获取实例。
+`JmClient` 是核心客户端接口，定义了所有业务操作。通过 `JmComic.newApiClientAsync()` 或 `JmComic.newHtmlClientAsync()` 获取完成初始化的实例。
 
 ## 获取实例
 
@@ -9,8 +9,18 @@ JmConfiguration config = new JmConfiguration.Builder()
         .clientType(ClientType.API)
         .build();
 
-AbstractJmClient client = JmComic.newApiClient(config);
+try (AbstractJmClient client = JmComic.newApiClientAsync(config).join()) {
+    // 使用已经完成初始化的 client
+} catch (CompletionException e) {
+    if (e.getCause() instanceof JmClientInitializationException initializationException) {
+        System.err.println("客户端初始化失败: " + initializationException.getMessage());
+    } else {
+        throw e;
+    }
+}
 ```
+
+`newApiClient()` 和 `newHtmlClient()` 为兼容旧代码继续保留，但已弃用。它们仍会立即返回；初始化失败不会抛给 executor 线程的默认未捕获异常处理器。新代码应使用异步工厂观察初始化结果。
 
 ## 漫画相关
 
