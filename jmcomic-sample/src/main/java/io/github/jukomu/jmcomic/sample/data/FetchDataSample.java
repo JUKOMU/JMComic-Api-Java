@@ -3,12 +3,14 @@ package io.github.jukomu.jmcomic.sample.data;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
 import io.github.jukomu.jmcomic.api.enums.ForumMode;
 import io.github.jukomu.jmcomic.api.enums.TimeOption;
+import io.github.jukomu.jmcomic.api.exception.JmClientInitializationException;
 import io.github.jukomu.jmcomic.api.model.*;
 import io.github.jukomu.jmcomic.core.JmComic;
 import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
 import io.github.jukomu.jmcomic.core.config.JmConfiguration;
 
 import java.util.List;
+import java.util.concurrent.CompletionException;
 
 /**
  * 演示如何获取 JMComic 各种核心数据实体的示例代码。
@@ -22,7 +24,7 @@ public class FetchDataSample {
                 .clientType(ClientType.API)
                 .build();
 
-        try (AbstractJmClient client = JmComic.newApiClient(config)) {
+        try (AbstractJmClient client = JmComic.newApiClientAsync(config).join()) {
 
             // == 漫画 ==
             System.out.println("--- 获取本子详情 ---");
@@ -64,6 +66,12 @@ public class FetchDataSample {
             // == 连载追踪 ==
             System.out.println("\n--- 追踪列表 ---");
             fetchTracking(client);
+        } catch (CompletionException e) {
+            if (e.getCause() instanceof JmClientInitializationException initializationException) {
+                System.err.println("客户端初始化失败: " + initializationException.getMessage());
+                return;
+            }
+            throw e;
         }
     }
 

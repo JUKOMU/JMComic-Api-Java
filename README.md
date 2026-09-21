@@ -182,11 +182,14 @@
 import io.github.jukomu.jmcomic.api.download.DownloadProgress;
 import io.github.jukomu.jmcomic.api.download.DownloadResult;
 import io.github.jukomu.jmcomic.api.enums.ClientType;
+import io.github.jukomu.jmcomic.api.exception.JmClientInitializationException;
 import io.github.jukomu.jmcomic.api.model.JmAlbum;
 import io.github.jukomu.jmcomic.api.model.JmPhoto;
 import io.github.jukomu.jmcomic.core.JmComic;
 import io.github.jukomu.jmcomic.core.client.AbstractJmClient;
 import io.github.jukomu.jmcomic.core.config.JmConfiguration;
+
+import java.util.concurrent.CompletionException;
 
 public class QuickStart {
     public static void main(String[] args) {
@@ -194,7 +197,7 @@ public class QuickStart {
                 .clientType(ClientType.API)
                 .build();
 
-        try (AbstractJmClient client = JmComic.newApiClient(config)) {
+        try (AbstractJmClient client = JmComic.newApiClientAsync(config).join()) {
 
             // 下载整个本子（含进度回调）
             JmAlbum album = client.getAlbum("1064000");
@@ -211,6 +214,12 @@ public class QuickStart {
                 result.getFailedTasks().forEach((img, err) ->
                         System.err.println("失败: " + img.getTag() + " - " + err.getMessage()));
             }
+        } catch (CompletionException e) {
+            if (e.getCause() instanceof JmClientInitializationException initializationException) {
+                System.err.println("客户端初始化失败: " + initializationException.getMessage());
+                return;
+            }
+            throw e;
         }
     }
 }
@@ -219,7 +228,7 @@ public class QuickStart {
 ### 获取数据
 
 ```java
-try (AbstractJmClient client = JmComic.newApiClient(config)) {
+try (AbstractJmClient client = JmComic.newApiClientAsync(config).join()) {
     // 获取本子详情
     JmAlbum album = client.getAlbum("540709");
     System.out.println("标题: " + album.title() + ", 作者: " + album.authors());
@@ -286,7 +295,7 @@ client.downloadAlbum(album, totalPath, executor);
 
 ```java
 ExecutorService myExecutor = Executors.newFixedThreadPool(16);
-try (AbstractJmClient client = JmComic.newApiClient(config)) {
+try (AbstractJmClient client = JmComic.newApiClientAsync(config).join()) {
     DownloadResult result = client.download(album)
             .withExecutor(myExecutor)
             .withProgress(p -> System.out.printf("%d/%d%n",

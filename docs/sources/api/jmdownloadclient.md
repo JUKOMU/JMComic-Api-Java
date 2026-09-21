@@ -67,7 +67,7 @@ client.downloadManager().submit(task);
 `JmDownloadClient` 继承 `AutoCloseable`，使用完毕后需关闭：
 
 ```java
-try (AbstractJmClient client = JmComic.newApiClient(config)) {
+try (AbstractJmClient client = JmComic.newApiClientAsync(config).join()) {
     client.downloadAlbum(album);
 } // 自动关闭
 ```

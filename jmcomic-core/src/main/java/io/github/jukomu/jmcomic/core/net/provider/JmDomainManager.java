@@ -1,5 +1,6 @@
 package io.github.jukomu.jmcomic.core.net.provider;
 
+import io.github.jukomu.jmcomic.api.exception.JmClientInitializationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +25,13 @@ public final class JmDomainManager {
 
     private static final Logger logger = LoggerFactory.getLogger(JmDomainManager.class);
 
+    private enum InitializationState {
+        INITIALIZING,
+        READY,
+        FAILED,
+        CLOSED
+    }
+
     /**
      * 用于标记探活失败的域名。取 Integer.MAX_VALUE/2 以避免溢出，同时远大于正常失败计数
      */
@@ -31,8 +39,9 @@ public final class JmDomainManager {
 
     private final CopyOnWriteArrayList<String> domains;
     private final ConcurrentHashMap<String, AtomicInteger> failureCounts = new ConcurrentHashMap<>();
-    private volatile boolean initialized = false;
-    private volatile CountDownLatch initLatch = new CountDownLatch(1);
+    private final ThreadLocal<Boolean> initializationContext = new ThreadLocal<>();
+    private volatile InitializationState initializationState = InitializationState.INITIALIZING;
+    private volatile CompletableFuture<Void> initializationFuture = new CompletableFuture<>();
 
     /**
      * 后台复探定时器，由 startPeriodicProbe 创建
@@ -53,7 +62,9 @@ public final class JmDomainManager {
      * @return 状态最佳的域名。如果没有可用域名则返回 null。
      */
     public String getBestDomain() {
-        blockUntilInitialized();
+        if (!Boolean.TRUE.equals(initializationContext.get())) {
+            blockUntilInitialized();
+        }
         return domains.stream()
                 .min(Comparator.comparingInt(domain -> failureCounts.get(domain).get()))
                 .orElse(null);
@@ -110,23 +121,64 @@ public final class JmDomainManager {
     }
 
     public boolean isInitialized() {
-        return initialized;
+        return initializationState == InitializationState.READY;
     }
 
     /**
      * 设置初始化状态。初始化完成时释放阻塞的 getBestDomain() 调用。
      */
-    public void setInitialized(boolean initialized) {
-        this.initialized = initialized;
+    public synchronized void setInitialized(boolean initialized) {
         if (initialized) {
-            if (initLatch.getCount() > 0) {
-                initLatch.countDown();
+            if (initializationState == InitializationState.INITIALIZING) {
+                initializationState = InitializationState.READY;
+                initializationFuture.complete(null);
             }
         } else {
-            if (initLatch.getCount() == 0) {
-                initLatch = new CountDownLatch(1);
+            if (initializationState != InitializationState.INITIALIZING) {
+                initializationState = InitializationState.INITIALIZING;
+                initializationFuture = new CompletableFuture<>();
             }
         }
+    }
+
+    /**
+     * 标记初始化失败，并唤醒所有等待域名初始化的调用。
+     */
+    public synchronized void failInitialization(JmClientInitializationException exception) {
+        if (initializationState != InitializationState.INITIALIZING) {
+            return;
+        }
+        initializationState = InitializationState.FAILED;
+        initializationFuture.completeExceptionally(exception);
+    }
+
+    /**
+     * 标记域名管理器已关闭，并使后续等待立即失败。
+     */
+    public synchronized void closeInitialization() {
+        JmClientInitializationException exception =
+                new JmClientInitializationException("Client has been closed.");
+        initializationState = InitializationState.CLOSED;
+        if (initializationFuture.isDone()) {
+            initializationFuture = CompletableFuture.failedFuture(exception);
+        } else {
+            initializationFuture.completeExceptionally(exception);
+        }
+    }
+
+    /**
+     * 允许当前线程在具体客户端初始化期间使用已探活的域名。
+     * 其他线程仍需等待完整初始化结果。
+     */
+    public void enterInitializationContext() {
+        initializationContext.set(true);
+    }
+
+    /**
+     * 清除当前线程的客户端初始化上下文。
+     */
+    public void exitInitializationContext() {
+        initializationContext.remove();
     }
 
     // == 探活相关 ==
@@ -209,7 +261,10 @@ public final class JmDomainManager {
      * @param probe      探活实现
      * @param intervalMs 复探间隔（毫秒）
      */
-    public void startPeriodicProbe(DomainProbe probe, long intervalMs) {
+    public synchronized void startPeriodicProbe(DomainProbe probe, long intervalMs) {
+        if (initializationState == InitializationState.FAILED || initializationState == InitializationState.CLOSED) {
+            return;
+        }
         if (probeScheduler != null) {
             return; // 已经启动
         }
@@ -251,11 +306,12 @@ public final class JmDomainManager {
     /**
      * 关闭后台复探定时器。
      */
-    public void shutdown() {
+    public synchronized void shutdown() {
         if (probeScheduler != null && !probeScheduler.isShutdown()) {
             probeScheduler.shutdown();
             logger.info("后台域名复探已关闭");
         }
+        probeScheduler = null;
     }
 
     public boolean isAllDeadFallback() {
@@ -265,13 +321,24 @@ public final class JmDomainManager {
     // == 内部方法 ==
 
     private void blockUntilInitialized() {
-        if (this.initialized) return;
+        CompletableFuture<Void> future = initializationFuture;
+        if (initializationState == InitializationState.READY) {
+            return;
+        }
         try {
-            CountDownLatch latch = this.initLatch;
-            latch.await();
+            future.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("Wait for initialization was interrupted", e);
+            throw new JmClientInitializationException(
+                    "Wait for client initialization was interrupted.", e);
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof JmClientInitializationException initializationException) {
+                throw initializationException;
+            }
+            throw new JmClientInitializationException("Failed while waiting for client initialization.", cause);
+        } catch (CancellationException e) {
+            throw new JmClientInitializationException("Client initialization was cancelled.", e);
         }
     }
 }
