@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.jukomu</groupId>
         <artifactId>jmcomic-api-java</artifactId>
-        <version>1.1.9</version>
+        <version>1.1.10</version>
     </parent>
 
     <artifactId>jmcomic-api</artifactId>
