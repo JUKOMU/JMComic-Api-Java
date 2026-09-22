@@ -39,6 +39,7 @@ public final class RetryAndDomainRedirectInterceptor implements Interceptor {
         Request originalRequest = chain.request();
         final boolean isPlaceholder = isPlaceholderRequest(originalRequest);
         IOException lastException = null;
+        // MySQL 临时错误有独立的一次重试机会，不占用配置的普通重试次数。
         boolean transientMysqlRetryUsed = false;
         int maxAttempts = maxRetriesPerRequest + 1;
 
@@ -79,14 +80,17 @@ public final class RetryAndDomainRedirectInterceptor implements Interceptor {
                 }
 
                 if (transientMysqlFailure) {
+                    // 虽然 HTTP 状态为成功，但响应内容表明当前域名的上游数据库暂时不可用。
                     domainManager.reportFailure(currentHost);
 
                     if (transientMysqlRetryUsed) {
+                        // 第二次仍失败时交给上层按原响应处理，避免对同类错误持续重试。
                         logger.error("Request to {} still returned a transient MySQL connection error after retry.", requestUrl);
                         return response;
                     }
 
                     transientMysqlRetryUsed = true;
+                    // 扩充一次循环上限，确保普通重试次数为 0 时也会真正执行这次额外重试。
                     maxAttempts++;
                     response.close();
                     lastException = new IOException("Transient MySQL connection error for host " + currentHost);
@@ -140,6 +144,7 @@ public final class RetryAndDomainRedirectInterceptor implements Interceptor {
     }
 
     private boolean isTransientMysqlFailure(Response response) throws IOException {
+        // peekBody 只读取响应体副本，不影响上层随后读取完整响应。
         return response.isSuccessful()
                 && response.peekBody(ERROR_RESPONSE_PEEK_BYTES).string().contains(TRANSIENT_MYSQL_ERROR);
     }
