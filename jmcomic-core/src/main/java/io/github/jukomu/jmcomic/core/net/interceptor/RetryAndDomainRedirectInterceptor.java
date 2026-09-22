@@ -23,6 +23,8 @@ import java.util.concurrent.TimeUnit;
 public final class RetryAndDomainRedirectInterceptor implements Interceptor {
 
     private static final Logger logger = LoggerFactory.getLogger(RetryAndDomainRedirectInterceptor.class);
+    private static final String TRANSIENT_MYSQL_ERROR = "Could not connect to mysql!";
+    private static final long ERROR_RESPONSE_PEEK_BYTES = 1024L;
     private final JmDomainManager domainManager;
     private final int maxRetriesPerRequest;
 
@@ -35,11 +37,13 @@ public final class RetryAndDomainRedirectInterceptor implements Interceptor {
     @Override
     public Response intercept(@NotNull Chain chain) throws IOException {
         Request originalRequest = chain.request();
+        final boolean isPlaceholder = isPlaceholderRequest(originalRequest);
         IOException lastException = null;
+        boolean transientMysqlRetryUsed = false;
+        int maxAttempts = maxRetriesPerRequest + 1;
 
-        for (int tryCount = 0; tryCount <= maxRetriesPerRequest; tryCount++) {
+        for (int tryCount = 0; tryCount < maxAttempts; tryCount++) {
             Request requestToProceed;
-            final boolean isPlaceholder = isPlaceholderRequest(originalRequest);
 
             if (isPlaceholder) {
                 // 获取当前最佳域名
@@ -60,11 +64,35 @@ public final class RetryAndDomainRedirectInterceptor implements Interceptor {
             if (tryCount == 0) {
                 logger.info("Sending request to {}", requestUrl);
             } else {
-                logger.warn("Retrying request to {} (Attempt {}/{})", requestUrl, tryCount, maxRetriesPerRequest);
+                logger.warn("Retrying request to {} (Attempt {}/{})", requestUrl, tryCount, maxAttempts - 1);
             }
 
             try {
                 Response response = chain.withConnectTimeout(5, TimeUnit.SECONDS).proceed(requestToProceed);
+
+                boolean transientMysqlFailure;
+                try {
+                    transientMysqlFailure = isPlaceholder && isTransientMysqlFailure(response);
+                } catch (IOException e) {
+                    response.close();
+                    throw e;
+                }
+
+                if (transientMysqlFailure) {
+                    domainManager.reportFailure(currentHost);
+
+                    if (transientMysqlRetryUsed) {
+                        logger.error("Request to {} still returned a transient MySQL connection error after retry.", requestUrl);
+                        return response;
+                    }
+
+                    transientMysqlRetryUsed = true;
+                    maxAttempts++;
+                    response.close();
+                    lastException = new IOException("Transient MySQL connection error for host " + currentHost);
+                    logger.warn("Request to {} returned a transient MySQL connection error. Retrying once with another domain.", requestUrl);
+                    continue;
+                }
 
                 if (response.isSuccessful()) {
                     domainManager.reportSuccess(currentHost);
@@ -106,8 +134,14 @@ public final class RetryAndDomainRedirectInterceptor implements Interceptor {
         }
 
         // 如果循环结束仍未成功，抛出最后一次记录的异常
-        logger.error("Request for {} failed after {} retries.", originalRequest.url(), maxRetriesPerRequest, lastException);
-        throw new IOException("Request failed after " + maxRetriesPerRequest + " retries for URL: " + originalRequest.url(), lastException);
+        int retriesAttempted = maxAttempts - 1;
+        logger.error("Request for {} failed after {} retries.", originalRequest.url(), retriesAttempted, lastException);
+        throw new IOException("Request failed after " + retriesAttempted + " retries for URL: " + originalRequest.url(), lastException);
+    }
+
+    private boolean isTransientMysqlFailure(Response response) throws IOException {
+        return response.isSuccessful()
+                && response.peekBody(ERROR_RESPONSE_PEEK_BYTES).string().contains(TRANSIENT_MYSQL_ERROR);
     }
 
     /**
