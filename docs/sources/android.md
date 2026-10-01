@@ -5,8 +5,8 @@
 ```groovy
 // build.gradle (app)
 dependencies {
-    implementation 'io.github.jukomu:jmcomic-core:1.1.11'
-    implementation 'io.github.jukomu:jmcomic-android-support:1.1.11'
+    implementation 'io.github.jukomu:jmcomic-core:v1.1.12'
+    implementation 'io.github.jukomu:jmcomic-android-support:v1.1.12'
 }
 ```
 
