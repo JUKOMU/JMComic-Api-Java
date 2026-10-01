@@ -56,7 +56,7 @@ public final class RetryAndDomainRedirectInterceptor implements Interceptor {
                 Request requestToProceed1 = replaceHost(originalRequest, bestDomain);
                 requestToProceed = addAddHeaders(requestToProceed1, bestDomain);
             } else {
-                requestToProceed = addAddHeaders(originalRequest, "18comic.vip");
+                requestToProceed = addAddHeaders(originalRequest, originalRequest.url().host());
             }
 
             HttpUrl requestUrl = requestToProceed.url();
