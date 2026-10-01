@@ -453,6 +453,7 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
         clearActiveSession();
         this.cachedUserName = null;
         this.encryptedPassword = null;
+        this.cachePool.clear();
     }
 
     // == 便利操作层实现 ==
