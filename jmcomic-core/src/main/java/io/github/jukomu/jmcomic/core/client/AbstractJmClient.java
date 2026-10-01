@@ -80,10 +80,13 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
     protected final JmDomainManager domainManager;
     protected final CachePool<CacheKey, Object> cachePool;
     private final DownloadManager downloadManager;
-    protected String loginHost = JmConstants.PLACEHOLDER_HOST;
+    protected volatile String loginHost = JmConstants.PLACEHOLDER_HOST;
     protected SecretKey memorySafeKey;
     // 存储加密后的密码
     protected byte[] encryptedPassword;
+    protected volatile String cachedUserName;
+    protected volatile boolean autoLoginRefreshAllowed;
+    private volatile String selectedDomain;
     private final Object initializationLock = new Object();
     private final CompletableFuture<Void> initializationFuture = new CompletableFuture<>();
     private final AtomicBoolean resourcesClosed = new AtomicBoolean(false);
@@ -246,6 +249,40 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
         return domainStates;
     }
 
+    public void useDomain(String domain) {
+        Objects.requireNonNull(domain, "domain");
+        if (!domainManager.getDomains().contains(domain)) {
+            throw new IllegalArgumentException("Domain is not in the current domain list: " + domain);
+        }
+        String oldDomain = this.selectedDomain;
+        if (domain.equals(oldDomain)) {
+            return;
+        }
+        this.selectedDomain = domain;
+        clearActiveSession();
+    }
+
+    public void useAutoDomain() {
+        if (this.selectedDomain == null) {
+            return;
+        }
+        this.selectedDomain = null;
+        clearActiveSession();
+    }
+
+    public String getUsedDomain() {
+        String selected = this.selectedDomain;
+        if (selected != null) {
+            return selected;
+        }
+        String current = this.loginHost;
+        return JmConstants.PLACEHOLDER_HOST.equals(current) ? null : current;
+    }
+
+    public void recoverNetwork() {
+        httpClient.connectionPool().evictAll();
+    }
+
     /**
      * 重新探测所有域名的可达性。
      * 适用场景：网络环境切换后主动刷新域名状态。
@@ -397,6 +434,26 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
                         cookieJar.saveFromResponse(urlForDomain, cookiesForDomain);
                     });
         }
+    }
+
+    /**
+     * 清理当前域名作用域内的活动会话。缓存凭据由 API 客户端自行保留。
+     */
+    protected void clearActiveSession() {
+        this.loginHost = JmConstants.PLACEHOLDER_HOST;
+        this.loggedInUserName = null;
+        this.autoLoginRefreshAllowed = false;
+        this.cookieManager.getCookieStore().removeAll();
+    }
+
+    /**
+     * 清理活动会话及缓存凭据。
+     */
+    protected void clearAllSession() {
+        clearActiveSession();
+        this.cachedUserName = null;
+        this.encryptedPassword = null;
+        this.cachePool.clear();
     }
 
     // == 便利操作层实现 ==
@@ -994,6 +1051,7 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
      */
     protected void cacheUsername(String username) {
         this.loggedInUserName = username;
+        this.cachedUserName = username;
     }
 
     /**
@@ -1015,11 +1073,15 @@ public abstract class AbstractJmClient implements JmClient, JmDownloadClient {
      * @return HttpUrl Builder
      */
     protected HttpUrl.Builder newHttpUrlBuilder() {
-        // 这个方法很重要，它确保了所有请求都指向一个有效的、由DomainManager管理的域名
-        // 我们只需要提供一个占位符域名，它将被拦截器替换
+        // 手动选择直接使用指定域名；自动模式在尚未确定域名时使用占位符。
         return new HttpUrl.Builder()
                 .scheme("https")
-                .host(loginHost);
+                .host(requestHost());
+    }
+
+    protected String requestHost() {
+        String selected = this.selectedDomain;
+        return selected != null ? selected : this.loginHost;
     }
 
     protected Request.Builder getGetRequestBuilder(HttpUrl url) {

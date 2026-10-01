@@ -41,3 +41,5 @@ docs/.venv/
 
 ### Mac OS ###
 .DS_Store
+/.claude/
+/develop docs/

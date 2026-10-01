@@ -428,6 +428,7 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
             if (userInfo.username() != null) {
                 super.cacheUsername(userInfo.username());
             }
+            this.autoLoginRefreshAllowed = true;
 
             return userInfo;
         } catch (ResponseException e) {
@@ -663,11 +664,14 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
 
     @Override
     public void logout() {
-        HttpUrl url = newHttpUrlBuilder()
-                .addPathSegment(JmConstants.API_MEMBER_LOGOUT)
-                .build();
-
-        executePostRequest(url, new FormBody.Builder().build());
+        try {
+            HttpUrl url = newHttpUrlBuilder()
+                    .addPathSegment(JmConstants.API_MEMBER_LOGOUT)
+                    .build();
+            executePostRequest(url, new FormBody.Builder().build());
+        } finally {
+            clearAllSession();
+        }
     }
 
     @Override
@@ -1598,7 +1602,7 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
     private JmApiResponse executeGetRequest(HttpUrl url, String secret) {
         String timestamp = String.valueOf(Instant.now().getEpochSecond());
         String[] token = JmCryptoTool.generateToken(timestamp, secret, "");
-        Request request = addAppHeader(getGetRequestBuilder(url), token[0], token[1]).build();
+        Request request = addAppHeader(getGetRequestBuilder(resolveRequestUrl(url)), token[0], token[1]).build();
         try {
             JmResponse response = executeRequest(request);
             JmApiResponse jmApiResponse = new JmApiResponse(response, timestamp);
@@ -1606,12 +1610,11 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
             return jmApiResponse;
         } catch (ResponseException e) {
             // 登录状态失效
-            if (e.getMessage().contains("請先登入會員") && StringUtils.isNotBlank(this.loggedInUserName)) {
-                // 重置登录域名
-                this.loginHost = JmConstants.PLACEHOLDER_HOST;
-                login(this.loggedInUserName, decryptPasswordFromMemory());
-                // 重试
-                JmResponse response = executeRequest(request);
+            if (shouldRefreshLogin(e)) {
+                login(this.cachedUserName, decryptPasswordFromMemory());
+                Request retryRequest = addAppHeader(
+                        getGetRequestBuilder(resolveRequestUrl(url)), token[0], token[1]).build();
+                JmResponse response = executeRequest(retryRequest);
                 JmApiResponse jmApiResponse = new JmApiResponse(response, timestamp);
                 jmApiResponse.requireSuccess();
                 return jmApiResponse;
@@ -1629,7 +1632,7 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
     private JmApiResponse executePostRequest(HttpUrl url, RequestBody requestBody) {
         String timestamp = String.valueOf(Instant.now().getEpochSecond());
         String[] token = JmCryptoTool.generateToken(timestamp, JmConstants.APP_TOKEN_SECRET, JmConstants.APP_VERSION);
-        Request request = addAppHeader(getPostRequestBuilder(url, requestBody), token[0], token[1]).build();
+        Request request = addAppHeader(getPostRequestBuilder(resolveRequestUrl(url), requestBody), token[0], token[1]).build();
         try {
             JmResponse response = executeRequest(request);
             JmApiResponse jmApiResponse = new JmApiResponse(response, timestamp);
@@ -1637,18 +1640,34 @@ public final class JmApiClient extends AbstractJmClient implements JmNovelClient
             return jmApiResponse;
         } catch (ResponseException e) {
             // 登录状态失效
-            if (e.getMessage().contains("請先登入會員") && StringUtils.isNotBlank(this.loggedInUserName)) {
-                // 重置登录域名
-                this.loginHost = JmConstants.PLACEHOLDER_HOST;
-                login(this.loggedInUserName, decryptPasswordFromMemory());
-                // 重试
-                JmResponse response = executeRequest(request);
+            if (shouldRefreshLogin(e)) {
+                login(this.cachedUserName, decryptPasswordFromMemory());
+                Request retryRequest = addAppHeader(
+                        getPostRequestBuilder(resolveRequestUrl(url), requestBody), token[0], token[1]).build();
+                JmResponse response = executeRequest(retryRequest);
                 JmApiResponse jmApiResponse = new JmApiResponse(response, timestamp);
                 jmApiResponse.requireSuccess();
                 return jmApiResponse;
             }
             throw e;
         }
+    }
+
+    private boolean shouldRefreshLogin(ResponseException exception) {
+        String message = exception.getMessage();
+        return autoLoginRefreshAllowed
+                && StringUtils.isNotBlank(this.cachedUserName)
+                && StringUtils.isNotBlank(decryptPasswordFromMemory())
+                && message != null
+                && message.contains("請先登入會員");
+    }
+
+    private HttpUrl resolveRequestUrl(HttpUrl url) {
+        String host = requestHost();
+        if (JmConstants.PLACEHOLDER_HOST.equals(host) || host.equals(url.host())) {
+            return url;
+        }
+        return url.newBuilder().host(host).build();
     }
 
     /**
